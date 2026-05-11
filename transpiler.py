@@ -5,16 +5,24 @@ C_RESERVED = {'void','int','char','float','double','return','if','else','while',
                'for','do','switch','case','break','continue','struct','union',
                'enum','typedef','static','extern','const','sizeof','goto','default'}
 
+CHANNELS = {'stdout', 'stdin', 'string'}
+
 def safe_name(n):
     return f'm_{n}' if n in C_RESERVED else n
 
 def transpile(source):
     lines = [l.strip() for l in source.strip().splitlines() if l.strip()]
     includes = set()
-    declarations = []
-    body = []
-    entry = "main"
-    variables = {}  # name -> type ('int' or 'str')
+    functions = []
+    current = None
+    entry = 'main'
+
+    def new_func(name):
+        nonlocal current, entry
+        if current is not None:
+            functions.append(current)
+        entry = name
+        current = {'name': name, 'declarations': [], 'body': [], 'variables': {}}
 
     for line in lines:
         first_split = line.split(None, 1)
@@ -33,93 +41,120 @@ def transpile(source):
             pass
 
         elif op == 1:
-            entry = arg1 if arg1 else "main"
+            new_func(arg1 if arg1 else 'main')
 
         elif op == 4:
-            if arg1 in ("stdout", "stdin"):
-                includes.add("#include <stdio.h>")
-            elif arg1 == "string":
-                includes.add("#include <string.h>")
+            if arg1 in CHANNELS:
+                if arg1 in ('stdout', 'stdin'):
+                    includes.add('#include <stdio.h>')
+                elif arg1 == 'string':
+                    includes.add('#include <string.h>')
+            elif arg1 and current is not None:
+                current['body'].append(f'    {safe_name(arg1)}();')
 
         elif op == 3:
+            if current is None:
+                continue
             if arg1 and arg2:
                 raw = arg2.strip('"')
                 try:
                     int(raw)
-                    variables[arg1] = 'int'
-                    declarations.append(f'    int {safe_name(arg1)} = {raw};')
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)} = {raw};')
                 except ValueError:
-                    variables[arg1] = 'str'
-                    declarations.append(f'    char {safe_name(arg1)}[] = "{raw}";')
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[] = "{raw}";')
             elif arg1:
-                variables[arg1] = 'str'
-                declarations.append(f'    char {safe_name(arg1)}[256];')
+                current['variables'][arg1] = 'str'
+                current['declarations'].append(f'    char {safe_name(arg1)}[256];')
 
         elif op == 2:
-            includes.add("#include <stdio.h>")
-            if arg1 and arg1 in variables:
-                fmt = "%d" if variables[arg1] == 'int' else "%s"
-                body.append(f'    printf("{fmt}\\n", {safe_name(arg1)});')
+            if current is None:
+                continue
+            includes.add('#include <stdio.h>')
+            if arg1 and arg1 in current['variables']:
+                fmt = "%d" if current['variables'][arg1] == 'int' else "%s"
+                current['body'].append(f'    printf("{fmt}\\n", {safe_name(arg1)});')
             elif arg1:
-                msg = arg1.strip('"')
-                body.append(f'    printf("{msg}\\n");')
+                current['body'].append(f'    printf("{arg1.strip(chr(34))}\\n");')
 
         elif op == 6:
-            if arg1 and arg1 in variables:
-                includes.add("#include <stdio.h>")
+            if current is None:
+                continue
+            if arg1 and arg1 in current['variables']:
+                includes.add('#include <stdio.h>')
                 prompt = arg2.strip('"') if arg2 else arg1
-                body.append(f'    printf("{prompt}: ");')
-                body.append(f'    fgets({safe_name(arg1)}, sizeof({safe_name(arg1)}), stdin);')
+                current['body'].append(f'    printf("{prompt}: ");')
+                current['body'].append(f'    fgets({safe_name(arg1)}, sizeof({safe_name(arg1)}), stdin);')
 
         elif op == 5:
+            if current is None:
+                continue
             if arg1 and arg2:
                 val = arg2.strip('"')
-                if arg1 in variables and variables[arg1] == 'int':
-                    body.append(f'    if ({safe_name(arg1)} == {val}) {{')
+                if arg1 in current['variables'] and current['variables'][arg1] == 'int':
+                    current['body'].append(f'    if ({safe_name(arg1)} == {val}) {{')
                 else:
-                    includes.add("#include <string.h>")
-                    body.append(f'    if (strcmp({safe_name(arg1)}, "{val}\\n") == 0) {{')
+                    includes.add('#include <string.h>')
+                    current['body'].append(f'    if (strcmp({safe_name(arg1)}, "{val}\\n") == 0) {{')
 
         elif op == 9:
+            if current is None:
+                continue
             if arg1 and arg2:
                 val = arg2.strip('"')
-                if arg1 in variables and variables[arg1] == 'int':
-                    body.append(f'    while ({safe_name(arg1)} < {val}) {{')
+                if arg1 in current['variables'] and current['variables'][arg1] == 'int':
+                    current['body'].append(f'    while ({safe_name(arg1)} < {val}) {{')
                 else:
-                    includes.add("#include <string.h>")
-                    body.append(f'    while (strcmp({safe_name(arg1)}, "{val}\\n") != 0) {{')
+                    includes.add('#include <string.h>')
+                    current['body'].append(f'    while (strcmp({safe_name(arg1)}, "{val}\\n") != 0) {{')
             else:
-                body.append('    }')
+                current['body'].append('    }')
 
         elif op == 8:
+            if current is None:
+                continue
             if arg1 and arg2 and arg2[0] in '+-*/':
                 sym = arg2[0]
                 val = arg2[1:].strip() or '1'
                 if sym == '+':
-                    body.append(f'    {safe_name(arg1)}++;' if val == '1' else f'    {safe_name(arg1)} += {val};')
+                    current['body'].append(f'    {safe_name(arg1)}++;' if val == '1' else f'    {safe_name(arg1)} += {val};')
                 elif sym == '-':
-                    body.append(f'    {safe_name(arg1)}--;' if val == '1' else f'    {safe_name(arg1)} -= {val};')
+                    current['body'].append(f'    {safe_name(arg1)}--;' if val == '1' else f'    {safe_name(arg1)} -= {val};')
                 elif sym == '*':
-                    body.append(f'    {safe_name(arg1)} *= {val};')
+                    current['body'].append(f'    {safe_name(arg1)} *= {val};')
                 elif sym == '/':
-                    body.append(f'    {safe_name(arg1)} /= {val};')
+                    current['body'].append(f'    {safe_name(arg1)} /= {val};')
             else:
-                body.append('    /* new octave */')
+                current['body'].append('    /* new octave */')
 
         elif op == 7:
-            body.append('    return 0;')
+            if current is not None:
+                current['body'].append('    return 0;')
+
+    if current is not None:
+        functions.append(current)
 
     c = []
     for inc in sorted(includes):
         c.append(inc)
-    c.append(f'\nint {safe_name(entry)}() {{')
-    c.extend(declarations)
-    if declarations and body:
+
+    if len(functions) > 1:
         c.append('')
-    c.extend(body)
-    c.append('}')
-    if entry != 'main':
-        c.append(f'\nint main() {{ return {safe_name(entry)}(); }}')
+        for func in functions:
+            c.append(f'int {safe_name(func["name"])}();')
+
+    for func in functions:
+        c.append(f'\nint {safe_name(func["name"])}() {{')
+        c.extend(func['declarations'])
+        if func['declarations'] and func['body']:
+            c.append('')
+        c.extend(func['body'])
+        c.append('}')
+
+    if functions and functions[-1]['name'] != 'main':
+        c.append(f'\nint main() {{ return {safe_name(functions[-1]["name"])}(); }}')
+
     return '\n'.join(c)
 
 
@@ -132,35 +167,7 @@ hello = """
 7
 """
 
-# Variables
-variables_demo = """
-0
-1 main
-4 stdout
-3 name "Jonathan"
-3 greeting "The Patchwright speaks"
-2 name
-2 greeting
-7
-"""
-
-# Input + conditional
-interactive = """
-0
-1 main
-4 stdout
-4 stdin
-4 string
-3 answer
-2 What is the language of 32 years?
-6 answer
-5 answer "mishmaath"
-2 Yes. The schema named itself.
-9
-7
-"""
-
-# Loop — count 0 to 7, eight steps to the octave
+# Loop
 loop_demo = """
 0
 1 main
@@ -173,26 +180,53 @@ loop_demo = """
 7
 """
 
+# Functions — speak called three times from main
+functions_demo = """
+0
+1 speak
+4 stdout
+2 mishmaath speaks
+7
+
+1 main
+4 speak
+4 speak
+4 speak
+7
+"""
+
+# mishmaath calls itself — sense of self calling sense of self
+# depth guard via loop prevents stack overflow
+self_call = """
+0
+1 mishmaath
+4 stdout
+3 depth 0
+9 depth "3"
+2 The language calls itself
+8 depth +1
+9
+7
+
+1 main
+4 mishmaath
+7
+"""
+
 print("=== Hello World ===")
-r = transpile(hello)
-print(r)
-with open('/tmp/hello.c', 'w') as f:
-    f.write(r)
-
-print("\n=== Variables ===")
-r2 = transpile(variables_demo)
-print(r2)
-with open('/tmp/variables.c', 'w') as f:
-    f.write(r2)
-
-print("\n=== Interactive ===")
-r3 = transpile(interactive)
-print(r3)
-with open('/tmp/interactive.c', 'w') as f:
-    f.write(r3)
+print(transpile(hello))
 
 print("\n=== Loop ===")
-r4 = transpile(loop_demo)
-print(r4)
-with open('/tmp/loop.c', 'w') as f:
-    f.write(r4)
+print(transpile(loop_demo))
+
+print("\n=== Functions ===")
+r = transpile(functions_demo)
+print(r)
+with open('/tmp/functions.c', 'w') as f:
+    f.write(r)
+
+print("\n=== Self Call ===")
+r2 = transpile(self_call)
+print(r2)
+with open('/tmp/self_call.c', 'w') as f:
+    f.write(r2)
