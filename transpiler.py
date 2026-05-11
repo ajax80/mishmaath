@@ -5,7 +5,7 @@ C_RESERVED = {'void','int','char','float','double','return','if','else','while',
                'for','do','switch','case','break','continue','struct','union',
                'enum','typedef','static','extern','const','sizeof','goto','default'}
 
-CHANNELS = {'stdout', 'stdin', 'string'}
+CHANNELS = {'stdout', 'stdin', 'string', 'file'}
 
 def safe_name(n):
     return f'm_{n}' if n in C_RESERVED else n
@@ -29,7 +29,7 @@ def transpile(source):
         op = int(first_split[0])
         rest = first_split[1].strip() if len(first_split) > 1 else None
 
-        if rest and op in (3, 5, 6, 8, 9):
+        if rest and op in (3, 5, 6, 8, 9, 10):
             sub = rest.split(None, 1)
             arg1 = sub[0]
             arg2 = sub[1].strip() if len(sub) > 1 else None
@@ -45,7 +45,7 @@ def transpile(source):
 
         elif op == 4:
             if arg1 in CHANNELS:
-                if arg1 in ('stdout', 'stdin'):
+                if arg1 in ('stdout', 'stdin', 'file'):
                     includes.add('#include <stdio.h>')
                 elif arg1 == 'string':
                     includes.add('#include <string.h>')
@@ -83,9 +83,13 @@ def transpile(source):
                 continue
             if arg1 and arg1 in current['variables']:
                 includes.add('#include <stdio.h>')
-                prompt = arg2.strip('"') if arg2 else arg1
-                current['body'].append(f'    printf("{prompt}: ");')
-                current['body'].append(f'    fgets({safe_name(arg1)}, sizeof({safe_name(arg1)}), stdin);')
+                if arg2 and ('.' in arg2 or '/' in arg2):
+                    filename = arg2.strip('"')
+                    current['body'].append(f'    {{ FILE *_rf = fopen("{filename}", "r"); if (_rf) {{ fgets({safe_name(arg1)}, sizeof({safe_name(arg1)}), _rf); fclose(_rf); }} }}')
+                else:
+                    prompt = arg2.strip('"') if arg2 else arg1
+                    current['body'].append(f'    printf("{prompt}: ");')
+                    current['body'].append(f'    fgets({safe_name(arg1)}, sizeof({safe_name(arg1)}), stdin);')
 
         elif op == 5:
             if current is None:
@@ -127,6 +131,19 @@ def transpile(source):
                     current['body'].append(f'    {safe_name(arg1)} /= {val};')
             else:
                 current['body'].append('    /* new octave */')
+
+        elif op == 10:
+            if current is None:
+                continue
+            if arg1 and arg2:
+                filename = arg2.strip('"')
+                includes.add('#include <stdio.h>')
+                if arg1 in current['variables']:
+                    fmt = "%d" if current['variables'][arg1] == 'int' else "%s"
+                    current['body'].append(f'    {{ FILE *_wf = fopen("{filename}", "a"); if (_wf) {{ fprintf(_wf, "{fmt}\\n", {safe_name(arg1)}); fclose(_wf); }} }}')
+                else:
+                    msg = arg1.strip('"')
+                    current['body'].append(f'    {{ FILE *_wf = fopen("{filename}", "a"); if (_wf) {{ fprintf(_wf, "{msg}\\n"); fclose(_wf); }} }}')
 
         elif op == 7:
             if current is not None:
@@ -213,6 +230,30 @@ self_call = """
 7
 """
 
+# File write — illusion: data passes out of the program
+file_write = """
+0
+1 main
+4 stdout
+4 file
+3 msg "mishmaath touched the disk"
+10 msg "mishmaath.log"
+2 Written.
+7
+"""
+
+# File read — read it back
+file_read = """
+0
+1 main
+4 stdout
+4 file
+3 line
+6 line "mishmaath.log"
+2 line
+7
+"""
+
 print("=== Hello World ===")
 print(transpile(hello))
 
@@ -230,3 +271,15 @@ r2 = transpile(self_call)
 print(r2)
 with open('/tmp/self_call.c', 'w') as f:
     f.write(r2)
+
+print("\n=== File Write ===")
+r3 = transpile(file_write)
+print(r3)
+with open('/tmp/file_write.c', 'w') as f:
+    f.write(r3)
+
+print("\n=== File Read ===")
+r4 = transpile(file_read)
+print(r4)
+with open('/tmp/file_read.c', 'w') as f:
+    f.write(r4)
