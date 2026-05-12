@@ -1,0 +1,18 @@
+#!/usr/bin/env mishmaath
+# shared ground — gé
+0
+3 name "mishmaath"
+3 count 0
+
+1 speak
+4 stdout
+2 name
+8 count +1
+7
+
+1 main
+4 speak
+4 speak
+4 speak
+2 count
+7

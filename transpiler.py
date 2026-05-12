@@ -14,6 +14,8 @@ def transpile(source):
     lines = [l.strip() for l in source.strip().splitlines() if l.strip() and not l.strip().startswith('#')]
     includes = set()
     functions = []
+    globals_ = []
+    global_vars = {}
     current = None
     entry = 'main'
 
@@ -22,7 +24,7 @@ def transpile(source):
         if current is not None:
             functions.append(current)
         entry = name
-        current = {'name': name, 'declarations': [], 'body': [], 'variables': {}}
+        current = {'name': name, 'declarations': [], 'body': [], 'variables': dict(global_vars)}
 
     for line in lines:
         first_split = line.split(None, 1)
@@ -54,6 +56,18 @@ def transpile(source):
 
         elif op == 3:
             if current is None:
+                if arg1 and arg2:
+                    raw = arg2.strip('"')
+                    try:
+                        int(raw)
+                        global_vars[arg1] = 'int'
+                        globals_.append(f'int {safe_name(arg1)} = {raw};')
+                    except ValueError:
+                        global_vars[arg1] = 'str'
+                        globals_.append(f'char {safe_name(arg1)}[256] = "{raw}";')
+                elif arg1:
+                    global_vars[arg1] = 'str'
+                    globals_.append(f'char {safe_name(arg1)}[256];')
                 continue
             if arg1 and arg2:
                 already = arg1 in current['variables']
@@ -203,9 +217,16 @@ def transpile(source):
     if current is not None:
         functions.append(current)
 
+    for func in functions:
+        func['variables'].update({k: v for k, v in global_vars.items() if k not in func['variables']})
+
     c = []
     for inc in sorted(includes):
         c.append(inc)
+
+    if globals_:
+        c.append('')
+        c.extend(globals_)
 
     if len(functions) > 1:
         c.append('')
