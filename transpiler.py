@@ -56,17 +56,43 @@ def transpile(source):
             if current is None:
                 continue
             if arg1 and arg2:
+                already = arg1 in current['variables']
                 raw = arg2.strip('"')
-                try:
-                    int(raw)
-                    current['variables'][arg1] = 'int'
-                    current['declarations'].append(f'    int {safe_name(arg1)} = {raw};')
-                except ValueError:
-                    current['variables'][arg1] = 'str'
-                    current['declarations'].append(f'    char {safe_name(arg1)}[] = "{raw}";')
+                if arg2 in current['variables']:
+                    src_type = current['variables'][arg2]
+                    if already:
+                        if src_type == 'int':
+                            current['body'].append(f'    {safe_name(arg1)} = {safe_name(arg2)};')
+                        else:
+                            includes.add('#include <string.h>')
+                            current['body'].append(f'    strcpy({safe_name(arg1)}, {safe_name(arg2)});')
+                    else:
+                        current['variables'][arg1] = src_type
+                        if src_type == 'int':
+                            current['declarations'].append(f'    int {safe_name(arg1)} = {safe_name(arg2)};')
+                        else:
+                            includes.add('#include <string.h>')
+                            current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                            current['declarations'].append(f'    strcpy({safe_name(arg1)}, {safe_name(arg2)});')
+                else:
+                    try:
+                        int(raw)
+                        if already:
+                            current['body'].append(f'    {safe_name(arg1)} = {raw};')
+                        else:
+                            current['variables'][arg1] = 'int'
+                            current['declarations'].append(f'    int {safe_name(arg1)} = {raw};')
+                    except ValueError:
+                        if already:
+                            includes.add('#include <string.h>')
+                            current['body'].append(f'    strcpy({safe_name(arg1)}, "{raw}");')
+                        else:
+                            current['variables'][arg1] = 'str'
+                            current['declarations'].append(f'    char {safe_name(arg1)}[256] = "{raw}";')
             elif arg1:
-                current['variables'][arg1] = 'str'
-                current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
 
         elif op == 2:
             if current is None:
@@ -141,7 +167,7 @@ def transpile(source):
         elif op == 8:
             if current is None:
                 continue
-            if arg1 and arg2 and arg2[0] in '+-*/':
+            if arg1 and arg2 and arg2[0] in '+-*/%':
                 sym = arg2[0]
                 val = arg2[1:].strip() or '1'
                 if sym == '+':
@@ -152,6 +178,8 @@ def transpile(source):
                     current['body'].append(f'    {safe_name(arg1)} *= {val};')
                 elif sym == '/':
                     current['body'].append(f'    {safe_name(arg1)} /= {val};')
+                elif sym == '%':
+                    current['body'].append(f'    {safe_name(arg1)} %= {val};')
             else:
                 current['body'].append('    /* new octave */')
 
