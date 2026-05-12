@@ -1,0 +1,11 @@
+#!/usr/bin/env mishmaath
+0
+1 shout #n
+4 stdout
+2 n
+7
+
+1 main
+4 shout 3
+4 shout 7
+7

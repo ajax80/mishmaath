@@ -19,19 +19,21 @@ def transpile(source):
     current = None
     entry = 'main'
 
-    def new_func(name):
+    def new_func(name, params=None):
         nonlocal current, entry
         if current is not None:
             functions.append(current)
         entry = name
-        current = {'name': name, 'declarations': [], 'body': [], 'variables': dict(global_vars)}
+        current = {'name': name, 'params': params or [], 'declarations': [], 'body': [], 'variables': dict(global_vars)}
+        for ptype, pname in (params or []):
+            current['variables'][pname] = ptype
 
     for line in lines:
         first_split = line.split(None, 1)
         op = int(first_split[0])
         rest = first_split[1].strip() if len(first_split) > 1 else None
 
-        if rest and op in (3, 5, 6, 8, 9, 10):
+        if rest and op in (3, 4, 5, 6, 8, 9, 10):
             sub = rest.split(None, 1)
             arg1 = sub[0]
             arg2 = sub[1].strip() if len(sub) > 1 else None
@@ -43,7 +45,18 @@ def transpile(source):
             pass
 
         elif op == 1:
-            new_func(arg1 if arg1 else 'main')
+            if rest:
+                parts = rest.split()
+                fname = parts[0]
+                params = []
+                for p in parts[1:]:
+                    if p.startswith('#'):
+                        params.append(('int', p[1:]))
+                    else:
+                        params.append(('str', p))
+                new_func(fname, params)
+            else:
+                new_func('main')
 
         elif op == 4:
             if arg1 in CHANNELS:
@@ -52,7 +65,17 @@ def transpile(source):
                 elif arg1 == 'string':
                     includes.add('#include <string.h>')
             elif arg1 and current is not None:
-                current['body'].append(f'    {safe_name(arg1)}();')
+                call_args = arg2.split() if arg2 else []
+                if call_args:
+                    rendered = []
+                    for a in call_args:
+                        if a.startswith('"') or a in current['variables']:
+                            rendered.append(safe_name(a) if a in current['variables'] else a)
+                        else:
+                            rendered.append(f'"{a}"')
+                    current['body'].append(f'    {safe_name(arg1)}({", ".join(rendered)});')
+                else:
+                    current['body'].append(f'    {safe_name(arg1)}();')
 
         elif op == 3:
             if current is None:
@@ -236,13 +259,24 @@ def transpile(source):
         c.append('')
         c.extend(globals_)
 
+    def sig(func):
+        if not func['params']:
+            return f'int {safe_name(func["name"])}()'
+        parts = []
+        for ptype, pname in func['params']:
+            if ptype == 'int':
+                parts.append(f'int {safe_name(pname)}')
+            else:
+                parts.append(f'char *{safe_name(pname)}')
+        return f'int {safe_name(func["name"])}({", ".join(parts)})'
+
     if len(functions) > 1:
         c.append('')
         for func in functions:
-            c.append(f'int {safe_name(func["name"])}();')
+            c.append(f'{sig(func)};')
 
     for func in functions:
-        c.append(f'\nint {safe_name(func["name"])}() {{')
+        c.append(f'\n{sig(func)} {{')
         c.extend(func['declarations'])
         if func['declarations'] and func['body']:
             c.append('')

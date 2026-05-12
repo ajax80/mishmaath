@@ -1,0 +1,11 @@
+#!/usr/bin/env mishmaath
+0
+1 greet name
+4 stdout
+2 name
+7
+
+1 main
+4 greet "Jonathan"
+4 greet "mishmaath"
+7
