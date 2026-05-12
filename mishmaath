@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+import sys
+import os
+import subprocess
+import tempfile
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from transpiler import transpile
+
+def usage():
+    print("usage: mishmaath <file.mish> [-c] [-o output]")
+    print("  -c        compile to binary via gcc")
+    print("  -o name   output name (default: stdout for C, a.out for binary)")
+    sys.exit(1)
+
+args = sys.argv[1:]
+if not args:
+    usage()
+
+src_file = None
+compile_flag = False
+out_name = None
+
+i = 0
+while i < len(args):
+    if args[i] == '-c':
+        compile_flag = True
+    elif args[i] == '-o':
+        i += 1
+        if i >= len(args):
+            usage()
+        out_name = args[i]
+    elif args[i].startswith('-'):
+        usage()
+    else:
+        src_file = args[i]
+    i += 1
+
+if not src_file:
+    usage()
+
+if not os.path.exists(src_file):
+    print(f"mishmaath: file not found: {src_file}")
+    sys.exit(1)
+
+with open(src_file) as f:
+    source = f.read()
+
+c_code = transpile(source)
+
+if not compile_flag:
+    if out_name:
+        with open(out_name, 'w') as f:
+            f.write(c_code)
+    else:
+        print(c_code)
+else:
+    with tempfile.NamedTemporaryFile(suffix='.c', mode='w', delete=False) as tf:
+        tf.write(c_code)
+        tmp_c = tf.name
+    binary = out_name or 'a.out'
+    result = subprocess.run(['gcc', tmp_c, '-o', binary])
+    os.unlink(tmp_c)
+    if result.returncode != 0:
+        sys.exit(result.returncode)
+    print(f"mishmaath: compiled to {binary}")

@@ -254,32 +254,33 @@ file_read = """
 7
 """
 
-print("=== Hello World ===")
-print(transpile(hello))
+if __name__ == '__main__':
+    print("=== Hello World ===")
+    print(transpile(hello))
 
-print("\n=== Loop ===")
-print(transpile(loop_demo))
+    print("\n=== Loop ===")
+    print(transpile(loop_demo))
 
-print("\n=== Functions ===")
-r = transpile(functions_demo)
-print(r)
-with open('/tmp/functions.c', 'w') as f:
-    f.write(r)
+    print("\n=== Functions ===")
+    r = transpile(functions_demo)
+    print(r)
+    with open('/tmp/functions.c', 'w') as f:
+        f.write(r)
 
-print("\n=== Self Call ===")
-r2 = transpile(self_call)
-print(r2)
-with open('/tmp/self_call.c', 'w') as f:
-    f.write(r2)
+    print("\n=== Self Call ===")
+    r2 = transpile(self_call)
+    print(r2)
+    with open('/tmp/self_call.c', 'w') as f:
+        f.write(r2)
 
-print("\n=== File Write ===")
-r3 = transpile(file_write)
-print(r3)
-with open('/tmp/file_write.c', 'w') as f:
-    f.write(r3)
+    print("\n=== File Write ===")
+    r3 = transpile(file_write)
+    print(r3)
+    with open('/tmp/file_write.c', 'w') as f:
+        f.write(r3)
 
-print("\n=== File Read ===")
-r4 = transpile(file_read)
-print(r4)
-with open('/tmp/file_read.c', 'w') as f:
-    f.write(r4)
+    print("\n=== File Read ===")
+    r4 = transpile(file_read)
+    print(r4)
+    with open('/tmp/file_read.c', 'w') as f:
+        f.write(r4)
