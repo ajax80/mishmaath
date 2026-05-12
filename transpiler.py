@@ -174,7 +174,9 @@ def transpile(source):
         elif op == 9:
             if current is None:
                 continue
-            if arg1 and arg2:
+            if arg1 == 'break':
+                current['body'].append('    break;')
+            elif arg1 and arg2:
                 val = arg2.strip('"')
                 if arg1 in current['variables'] and current['variables'][arg1] == 'int':
                     current['body'].append(f'    while ({safe_name(arg1)} < {val}) {{')
