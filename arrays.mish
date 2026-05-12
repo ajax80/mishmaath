@@ -1,0 +1,14 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+3 names[] "3"
+3 names.0 "Jonathan"
+3 names.1 "mishmaath"
+3 names.2 "Claire"
+3 i 0
+9 i "3"
+2 names.i
+8 i +1
+9
+7

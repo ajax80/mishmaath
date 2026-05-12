@@ -80,6 +80,11 @@ Then `chmod +x file.mish && ./file.mish`.
 9 var "val"         while var < val (int) or var != val (string)
 9                   close while block
 9 break             break out of loop
+3 name[] size       declare int array of given size
+3 name[] "size"     declare string array of given size
+3 name.0 val        set array element by literal index
+3 name.i val        set array element by variable index
+2 name.i            print array element
 10 var "file.txt"   append variable to file
 10 "msg" "file.txt" append literal string to file
 ```
@@ -231,7 +236,7 @@ The schema encodes sensory experience. A song becomes a fingerprint — each seg
 - [x] self-hosting first step — mishmaath described itself and ran
 - [x] function arguments
 - [x] string operations — concat (`8 str +other`), length (`6 n len str`), search (`5 str contains "needle"`)
-- [ ] arrays
+- [x] arrays — int and string, dot-index notation (`name.0`, `name.i`)
 - [ ] self-hosting compiler
 
 ---

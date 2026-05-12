@@ -8,6 +8,11 @@ C_RESERVED = {'void','int','char','float','double','return','if','else','while',
 CHANNELS = {'stdout', 'stdin', 'string', 'file'}
 
 def safe_name(n):
+    if '.' in n:
+        base, idx = n.split('.', 1)
+        base_s = f'm_{base}' if base in C_RESERVED else base
+        idx_s  = f'm_{idx}'  if idx  in C_RESERVED else idx
+        return f'{base_s}[{idx_s}]'
     return f'm_{n}' if n in C_RESERVED else n
 
 def transpile(source):
@@ -85,7 +90,26 @@ def transpile(source):
 
         elif op == 3:
             if current is None:
-                if arg1 and arg2:
+                if arg1 and '[]' in arg1:
+                    base = arg1.replace('[]', '')
+                    size = arg2.strip('"') if arg2 else '10'
+                    is_str = arg2 and arg2.startswith('"')
+                    if is_str:
+                        global_vars[base] = 'str[]'
+                        globals_.append(f'char {base}[{size}][256];')
+                    else:
+                        global_vars[base] = 'int[]'
+                        globals_.append(f'int {base}[{size}];')
+                elif arg1 and '.' in arg1:
+                    base = arg1.split('.')[0]
+                    raw = arg2.strip('"') if arg2 else ''
+                    base_type = global_vars.get(base, 'int[]')
+                    if base_type == 'str[]':
+                        includes.add('#include <string.h>')
+                        globals_.append(f'/* {safe_name(arg1)} = "{raw}"; */')
+                    else:
+                        globals_.append(f'/* {safe_name(arg1)} = {raw}; */')
+                elif arg1 and arg2:
                     raw = arg2.strip('"')
                     try:
                         int(raw)
@@ -98,7 +122,32 @@ def transpile(source):
                     global_vars[arg1] = 'str'
                     globals_.append(f'char {safe_name(arg1)}[256];')
                 continue
-            if arg1 and arg2:
+            if arg1 and '[]' in arg1:
+                base = arg1.replace('[]', '')
+                size = arg2.strip('"') if arg2 else '10'
+                is_str = arg2 and arg2.startswith('"')
+                if is_str:
+                    current['variables'][base] = 'str[]'
+                    current['declarations'].append(f'    char {base}[{size}][256];')
+                else:
+                    current['variables'][base] = 'int[]'
+                    current['declarations'].append(f'    int {base}[{size}];')
+            elif arg1 and '.' in arg1:
+                base = arg1.split('.')[0]
+                raw = arg2.strip('"') if arg2 else ''
+                base_type = current['variables'].get(base, current['variables'].get(base, global_vars.get(base, 'int[]')))
+                if base_type == 'str[]':
+                    includes.add('#include <string.h>')
+                    if arg2 and arg2 in current['variables']:
+                        current['body'].append(f'    strcpy({safe_name(arg1)}, {safe_name(arg2)});')
+                    else:
+                        current['body'].append(f'    strcpy({safe_name(arg1)}, "{raw}");')
+                else:
+                    if arg2 and arg2 in current['variables']:
+                        current['body'].append(f'    {safe_name(arg1)} = {safe_name(arg2)};')
+                    else:
+                        current['body'].append(f'    {safe_name(arg1)} = {raw};')
+            elif arg1 and arg2:
                 already = arg1 in current['variables']
                 raw = arg2.strip('"')
                 if arg2 in current['variables']:
@@ -141,7 +190,12 @@ def transpile(source):
             if current is None:
                 continue
             includes.add('#include <stdio.h>')
-            if arg1 and arg1 in current['variables']:
+            if arg1 and '.' in arg1:
+                base = arg1.split('.')[0]
+                base_type = current['variables'].get(base, global_vars.get(base, 'int[]'))
+                fmt = "%s" if base_type == 'str[]' else "%d"
+                current['body'].append(f'    printf("{fmt}\\n", {safe_name(arg1)});')
+            elif arg1 and arg1 in current['variables']:
                 fmt = "%d" if current['variables'][arg1] == 'int' else "%s"
                 current['body'].append(f'    printf("{fmt}\\n", {safe_name(arg1)});')
             elif arg1:
