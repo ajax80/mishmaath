@@ -46,9 +46,25 @@ if not os.path.exists(src_file):
 with open(src_file) as f:
     source = f.read()
 
+has_shebang = source.startswith('#!')
 c_code = transpile(source)
 
-if not compile_flag:
+if has_shebang and not compile_flag and not out_name:
+    with tempfile.NamedTemporaryFile(suffix='.c', mode='w', delete=False) as tf:
+        tf.write(c_code)
+        tmp_c = tf.name
+    with tempfile.NamedTemporaryFile(delete=False) as bf:
+        tmp_bin = bf.name
+    result = subprocess.run(['gcc', tmp_c, '-o', tmp_bin])
+    os.unlink(tmp_c)
+    if result.returncode != 0:
+        os.unlink(tmp_bin)
+        sys.exit(result.returncode)
+    os.chmod(tmp_bin, 0o755)
+    ret = subprocess.run([tmp_bin])
+    os.unlink(tmp_bin)
+    sys.exit(ret.returncode)
+elif not compile_flag:
     if out_name:
         with open(out_name, 'w') as f:
             f.write(c_code)

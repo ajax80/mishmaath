@@ -11,7 +11,7 @@ def safe_name(n):
     return f'm_{n}' if n in C_RESERVED else n
 
 def transpile(source):
-    lines = [l.strip() for l in source.strip().splitlines() if l.strip()]
+    lines = [l.strip() for l in source.strip().splitlines() if l.strip() and not l.strip().startswith('#')]
     includes = set()
     functions = []
     current = None
