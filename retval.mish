@@ -1,0 +1,24 @@
+#!/usr/bin/env mishmaath
+0
+1 double #x
+8 x *2
+7 x
+
+1 greet name
+4 stdout
+3 msg "Hello, "
+8 msg +name
+7 msg
+
+1 main
+4 stdout
+3 n double 5
+2 n
+3 n double n
+2 n
+3 out
+3 out greet "Jonathan"
+2 out
+3 out greet "mishmaath"
+2 out
+7

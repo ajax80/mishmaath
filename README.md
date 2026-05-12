@@ -72,6 +72,8 @@ Then `chmod +x file.mish && ./file.mish`.
 6 var "prompt"      read int (scanf) or string (fgets) from stdin
 6 var "file.txt"    read first line from file into var
 7                   return 0 — gate closes
+7 var               return variable value (int or string)
+3 res funcname args call function and capture return value
 8 var +val          arithmetic: +, -, *, /, % (val can be literal or variable)
 8 str +other        string concat: append other string or literal to str
 6 n len str         string length: n = strlen(str)
@@ -242,6 +244,7 @@ The schema encodes sensory experience. A song becomes a fingerprint — each seg
 - [x] function arguments
 - [x] string operations — concat (`8 str +other`), length (`6 n len str`), search (`5 str contains "needle"`)
 - [x] arrays — int and string, dot-index notation (`name.0`, `name.i`)
+- [x] function return values — `7 var` returns value, `3 res func args` captures it
 - [x] self-hosting compiler stage 0 — `compiler.mish` reads mishmaath source, outputs C
 - [ ] self-hosting stage 1 — full opcode coverage, compile itself
 

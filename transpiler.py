@@ -29,12 +29,19 @@ def transpile(source):
     current = None
     entry = 'main'
 
+    # pre-scan: collect function names so op 3 can detect call-and-capture
+    func_names = set()
+    for _l in lines:
+        _p = _l.split()
+        if _p and _p[0] == '1' and len(_p) > 1:
+            func_names.add(_p[1])
+
     def new_func(name, params=None):
         nonlocal current, entry
         if current is not None:
             functions.append(current)
         entry = name
-        current = {'name': name, 'params': params or [], 'declarations': [], 'body': [], 'variables': dict(global_vars), 'loop_stack': []}
+        current = {'name': name, 'params': params or [], 'declarations': [], 'body': [], 'variables': dict(global_vars), 'loop_stack': [], 'return_type': 'int'}
         for ptype, pname in (params or []):
             current['variables'][pname] = ptype
 
@@ -152,6 +159,33 @@ def transpile(source):
                         current['body'].append(f'    {safe_name(arg1)} = {safe_name(arg2)};')
                     else:
                         current['body'].append(f'    {safe_name(arg1)} = {raw};')
+            elif arg1 and arg2 and arg2.split()[0] in func_names:
+                fname_parts = arg2.split(None, 1)
+                fname = fname_parts[0]
+                call_args = fname_parts[1].split() if len(fname_parts) > 1 else []
+                rendered = []
+                for a in call_args:
+                    if a in current['variables']:
+                        rendered.append(safe_name(a))
+                    elif a.startswith('"'):
+                        rendered.append(a)
+                    else:
+                        try:
+                            int(a)
+                            rendered.append(a)
+                        except ValueError:
+                            rendered.append(f'"{a}"')
+                call_expr = f'{safe_name(fname)}({", ".join(rendered)})'
+                if arg1 in current['variables']:
+                    vtype = current['variables'][arg1]
+                    if vtype == 'str':
+                        includes.add('#include <string.h>')
+                        current['body'].append(f'    strcpy({safe_name(arg1)}, {call_expr});')
+                    else:
+                        current['body'].append(f'    {safe_name(arg1)} = {call_expr};')
+                else:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)} = {call_expr};')
             elif arg1 and arg2:
                 already = arg1 in current['variables']
                 raw = unquote(arg2)
@@ -391,7 +425,29 @@ def transpile(source):
 
         elif op == 7:
             if current is not None:
-                current['body'].append('    return 0;')
+                if rest:
+                    ret = rest.strip()
+                    if ret in current['variables']:
+                        vtype = current['variables'][ret]
+                        if vtype == 'str':
+                            current['return_type'] = 'char*'
+                            for i, decl in enumerate(current['declarations']):
+                                if f'char {safe_name(ret)}[256]' in decl:
+                                    if '=' in decl:
+                                        init = decl.split('=', 1)[1].strip().rstrip(';')
+                                        current['declarations'][i] = f'    static char {safe_name(ret)}[256];'
+                                        includes.add('#include <string.h>')
+                                        current['body'].insert(0, f'    strcpy({safe_name(ret)}, {init});')
+                                    else:
+                                        current['declarations'][i] = decl.replace('    char ', '    static char ', 1)
+                                    break
+                        else:
+                            current['return_type'] = 'int'
+                        current['body'].append(f'    return {safe_name(ret)};')
+                    else:
+                        current['body'].append(f'    return {ret};')
+                else:
+                    current['body'].append('    return 0;')
 
     if current is not None:
         functions.append(current)
@@ -408,15 +464,16 @@ def transpile(source):
         c.extend(globals_)
 
     def sig(func):
+        ret = func.get('return_type', 'int')
         if not func['params']:
-            return f'int {safe_name(func["name"])}()'
+            return f'{ret} {safe_name(func["name"])}()'
         parts = []
         for ptype, pname in func['params']:
             if ptype == 'int':
                 parts.append(f'int {safe_name(pname)}')
             else:
                 parts.append(f'char *{safe_name(pname)}')
-        return f'int {safe_name(func["name"])}({", ".join(parts)})'
+        return f'{ret} {safe_name(func["name"])}({", ".join(parts)})'
 
     if len(functions) > 1:
         c.append('')
