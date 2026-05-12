@@ -123,12 +123,18 @@ def transpile(source):
                 continue
             if arg1 and arg1 in current['variables']:
                 includes.add('#include <stdio.h>')
-                includes.add('#include <string.h>')
-                if arg2 and ('.' in arg2 or '/' in arg2):
+                if current['variables'][arg1] == 'int':
+                    prompt = arg2.strip('"') if arg2 else arg1
+                    current['body'].append(f'    printf("{prompt}: ");')
+                    current['body'].append(f'    fflush(stdout);')
+                    current['body'].append(f'    scanf("%d", &{safe_name(arg1)});')
+                elif arg2 and ('.' in arg2 or '/' in arg2):
+                    includes.add('#include <string.h>')
                     filename = arg2.strip('"')
                     current['body'].append(f'    {{ FILE *_rf = fopen("{filename}", "r"); if (_rf) {{ fgets({safe_name(arg1)}, sizeof({safe_name(arg1)}), _rf); fclose(_rf); }} }}')
                     current['body'].append(f'    {safe_name(arg1)}[strcspn({safe_name(arg1)}, "\\n")] = 0;')
                 else:
+                    includes.add('#include <string.h>')
                     prompt = arg2.strip('"') if arg2 else arg1
                     current['body'].append(f'    printf("{prompt}: ");')
                     current['body'].append(f'    fgets({safe_name(arg1)}, sizeof({safe_name(arg1)}), stdin);')
