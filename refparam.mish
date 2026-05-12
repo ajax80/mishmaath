@@ -1,0 +1,19 @@
+#!/usr/bin/env mishmaath
+0
+1 swap &a &b
+3 tmp 0
+3 tmp a
+3 a b
+3 b tmp
+7
+
+1 main
+4 stdout
+3 x 10
+3 y 20
+2 x
+2 y
+4 swap &x &y
+2 x
+2 y
+7

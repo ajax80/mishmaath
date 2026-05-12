@@ -20,6 +20,11 @@ def safe_name(n):
         return f'{base_s}[{idx_s}]'
     return f'm_{n}' if n in C_RESERVED else n
 
+def emit_val(n, variables):
+    if variables.get(n) == 'int*':
+        return f'(*{safe_name(n)})'
+    return safe_name(n)
+
 def transpile(source):
     lines = [l.strip() for l in source.strip().splitlines() if l.strip() and not l.strip().startswith('#')]
     includes = set()
@@ -69,6 +74,8 @@ def transpile(source):
                 for p in parts[1:]:
                     if p.startswith('#'):
                         params.append(('int', p[1:]))
+                    elif p.startswith('&'):
+                        params.append(('int*', p[1:]))
                     else:
                         params.append(('str', p))
                 new_func(fname, params)
@@ -86,8 +93,10 @@ def transpile(source):
                 if call_args:
                     rendered = []
                     for a in call_args:
-                        if a in current['variables']:
-                            rendered.append(safe_name(a))
+                        if a.startswith('&'):
+                            rendered.append(f'&{safe_name(a[1:])}')
+                        elif a in current['variables']:
+                            rendered.append(emit_val(a, current['variables']))
                         elif a.startswith('"'):
                             rendered.append(a)
                         else:
@@ -165,8 +174,10 @@ def transpile(source):
                 call_args = fname_parts[1].split() if len(fname_parts) > 1 else []
                 rendered = []
                 for a in call_args:
-                    if a in current['variables']:
-                        rendered.append(safe_name(a))
+                    if a.startswith('&'):
+                        rendered.append(f'&{safe_name(a[1:])}')
+                    elif a in current['variables']:
+                        rendered.append(emit_val(a, current['variables']))
                     elif a.startswith('"'):
                         rendered.append(a)
                     else:
@@ -188,19 +199,23 @@ def transpile(source):
                     current['declarations'].append(f'    int {safe_name(arg1)} = {call_expr};')
             elif arg1 and arg2:
                 already = arg1 in current['variables']
+                dest_type = current['variables'].get(arg1)
                 raw = unquote(arg2)
                 if arg2 in current['variables']:
                     src_type = current['variables'][arg2]
-                    if already:
-                        if src_type == 'int':
-                            current['body'].append(f'    {safe_name(arg1)} = {safe_name(arg2)};')
+                    src_expr = emit_val(arg2, current['variables'])
+                    if dest_type == 'int*':
+                        current['body'].append(f'    *{safe_name(arg1)} = {src_expr};')
+                    elif already:
+                        if src_type in ('int', 'int*'):
+                            current['body'].append(f'    {safe_name(arg1)} = {src_expr};')
                         else:
                             includes.add('#include <string.h>')
                             current['body'].append(f'    strcpy({safe_name(arg1)}, {safe_name(arg2)});')
                     else:
-                        current['variables'][arg1] = src_type
-                        if src_type == 'int':
-                            current['declarations'].append(f'    int {safe_name(arg1)} = {safe_name(arg2)};')
+                        current['variables'][arg1] = 'int' if src_type in ('int', 'int*') else src_type
+                        if src_type in ('int', 'int*'):
+                            current['declarations'].append(f'    int {safe_name(arg1)} = {src_expr};')
                         else:
                             includes.add('#include <string.h>')
                             current['declarations'].append(f'    char {safe_name(arg1)}[256];')
@@ -238,8 +253,9 @@ def transpile(source):
                 else:
                     current['body'].append(f'    printf("{unquote(arg1)}\\n");')
             elif arg1 and arg1 in current['variables']:
-                fmt = "%d" if current['variables'][arg1] == 'int' else "%s"
-                current['body'].append(f'    printf("{fmt}\\n", {safe_name(arg1)});')
+                vt = current['variables'][arg1]
+                fmt = "%s" if vt == 'str' else "%d"
+                current['body'].append(f'    printf("{fmt}\\n", {emit_val(arg1, current["variables"])});')
             elif arg1:
                 current['body'].append(f'    printf("{unquote(arg1)}\\n");')
             else:
@@ -321,8 +337,8 @@ def transpile(source):
                         val = tail[len(cop):].strip()
                         break
                 val = unquote(val)
-                if var in current['variables'] and current['variables'][var] == 'int':
-                    return f'{safe_name(var)} {op_str} {val}'
+                if var in current['variables'] and current['variables'][var] in ('int', 'int*'):
+                    return f'{emit_val(var, current["variables"])} {op_str} {val}'
                 else:
                     includes.add('#include <string.h>')
                     eq = '== 0' if op_str == '==' else ('!= 0' if op_str == '!=' else f'{op_str} 0')
@@ -398,11 +414,17 @@ def transpile(source):
                     else:
                         current['body'].append(f'    strcat({safe_name(arg1)}, "{val}");')
                 elif sym == '+':
-                    current['body'].append(f'    {safe_name(arg1)}++;' if val == '1' else f'    {safe_name(arg1)} += {val};')
+                    lhs = emit_val(arg1, current['variables'])
+                    rhs = emit_val(val, current['variables']) if val in current['variables'] else val
+                    current['body'].append(f'    {lhs}++;' if val == '1' else f'    {lhs} += {rhs};')
                 elif sym == '-':
-                    current['body'].append(f'    {safe_name(arg1)}--;' if val == '1' else f'    {safe_name(arg1)} -= {val};')
+                    lhs = emit_val(arg1, current['variables'])
+                    rhs = emit_val(val, current['variables']) if val in current['variables'] else val
+                    current['body'].append(f'    {lhs}--;' if val == '1' else f'    {lhs} -= {rhs};')
                 elif sym == '*':
-                    current['body'].append(f'    {safe_name(arg1)} *= {val};')
+                    lhs = emit_val(arg1, current['variables'])
+                    rhs = emit_val(val, current['variables']) if val in current['variables'] else val
+                    current['body'].append(f'    {lhs} *= {rhs};')
                 elif sym == '/':
                     current['body'].append(f'    {safe_name(arg1)} /= {val};')
                 elif sym == '%':
@@ -471,6 +493,8 @@ def transpile(source):
         for ptype, pname in func['params']:
             if ptype == 'int':
                 parts.append(f'int {safe_name(pname)}')
+            elif ptype == 'int*':
+                parts.append(f'int *{safe_name(pname)}')
             else:
                 parts.append(f'char *{safe_name(pname)}')
         return f'{ret} {safe_name(func["name"])}({", ".join(parts)})'
