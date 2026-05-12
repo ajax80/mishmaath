@@ -94,7 +94,11 @@ def transpile(source):
         elif op == 5:
             if current is None:
                 continue
-            if arg1 and arg2:
+            if arg1 == 'else':
+                current['body'].append('    } else {')
+            elif not arg1:
+                current['body'].append('    }')
+            elif arg1 and arg2:
                 val = arg2.strip('"')
                 if arg1 in current['variables'] and current['variables'][arg1] == 'int':
                     current['body'].append(f'    if ({safe_name(arg1)} == {val}) {{')

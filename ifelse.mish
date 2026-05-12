@@ -1,0 +1,10 @@
+0
+1 main
+4 stdout
+3 count 5
+5 count "5"
+2 count is five
+5 else
+2 count is not five
+5
+7
