@@ -83,28 +83,47 @@ def transpile(source):
                 continue
             if arg1 and arg1 in current['variables']:
                 includes.add('#include <stdio.h>')
+                includes.add('#include <string.h>')
                 if arg2 and ('.' in arg2 or '/' in arg2):
                     filename = arg2.strip('"')
                     current['body'].append(f'    {{ FILE *_rf = fopen("{filename}", "r"); if (_rf) {{ fgets({safe_name(arg1)}, sizeof({safe_name(arg1)}), _rf); fclose(_rf); }} }}')
+                    current['body'].append(f'    {safe_name(arg1)}[strcspn({safe_name(arg1)}, "\\n")] = 0;')
                 else:
                     prompt = arg2.strip('"') if arg2 else arg1
                     current['body'].append(f'    printf("{prompt}: ");')
                     current['body'].append(f'    fgets({safe_name(arg1)}, sizeof({safe_name(arg1)}), stdin);')
+                    current['body'].append(f'    {safe_name(arg1)}[strcspn({safe_name(arg1)}, "\\n")] = 0;')
 
         elif op == 5:
             if current is None:
                 continue
-            if arg1 == 'else':
-                current['body'].append('    } else {')
-            elif not arg1:
-                current['body'].append('    }')
-            elif arg1 and arg2:
-                val = arg2.strip('"')
-                if arg1 in current['variables'] and current['variables'][arg1] == 'int':
-                    current['body'].append(f'    if ({safe_name(arg1)} == {val}) {{')
+
+            def make_cond(var, tail):
+                op_str = '=='
+                val = tail
+                for cop in ('!=', '>=', '<=', '>', '<'):
+                    if tail.startswith(cop):
+                        op_str = cop
+                        val = tail[len(cop):].strip()
+                        break
+                val = val.strip('"')
+                if var in current['variables'] and current['variables'][var] == 'int':
+                    return f'{safe_name(var)} {op_str} {val}'
                 else:
                     includes.add('#include <string.h>')
-                    current['body'].append(f'    if (strcmp({safe_name(arg1)}, "{val}\\n") == 0) {{')
+                    eq = '== 0' if op_str == '==' else ('!= 0' if op_str == '!=' else f'{op_str} 0')
+                    return f'strcmp({safe_name(var)}, "{val}") {eq}'
+
+            if not arg1:
+                current['body'].append('    }')
+            elif arg1 == 'else' and not arg2:
+                current['body'].append('    } else {')
+            elif arg1 == 'else' and arg2:
+                parts = arg2.split(None, 1)
+                var2, tail2 = parts[0], (parts[1] if len(parts) > 1 else '""')
+                current['body'].append(f'    }} else if ({make_cond(var2, tail2)}) {{')
+            elif arg2:
+                current['body'].append(f'    if ({make_cond(arg1, arg2)}) {{')
 
         elif op == 9:
             if current is None:
@@ -115,7 +134,7 @@ def transpile(source):
                     current['body'].append(f'    while ({safe_name(arg1)} < {val}) {{')
                 else:
                     includes.add('#include <string.h>')
-                    current['body'].append(f'    while (strcmp({safe_name(arg1)}, "{val}\\n") != 0) {{')
+                    current['body'].append(f'    while (strcmp({safe_name(arg1)}, "{val}") != 0) {{')
             else:
                 current['body'].append('    }')
 

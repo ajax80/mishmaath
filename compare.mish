@@ -1,0 +1,15 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+3 score 7
+5 score > 9
+2 excellent
+5 else score >= 7
+2 good
+5 else score >= 5
+2 average
+5 else
+2 below average
+5
+7
