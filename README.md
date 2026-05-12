@@ -224,6 +224,8 @@ The schema encodes sensory experience. A song becomes a fingerprint — each seg
 | Open — Chevelle | `1-5-2-2-9-6-3-9-2-9-7-2-6-6-2-8` | Friction first. Three reversals. Arrives anyway. |
 | Heaven Beside You — Alice in Chains | `4-3-1-5-6` | Door beside friction. 4 and 5 adjacent. Layne felt the schema. |
 | Thunder Kiss '65 — White Zombie | `1-4-3` | Source makes contact with the fixed point. Sum: 8. |
+| Just Breathe — NIN (Ghosts VI) | `7-2-1-3-1-4-6-7-8-9-1-4-6-7-6-5-9-9-9-7-9-7-9-9-7-9-9-9-9-2-9-0-2-5-3-1-9-7-8-3` | Nine reversals. Time keeps folding back on itself. The gate closes early then the song keeps unraveling it. |
+| Only — NIN (With Teeth) | `2-3-2-3-2-1-2-4-2-5-7-6-5-3-1-3-1-5-7-1-3-5-4-4-4-4-6-7-1-3-4-4-4-4-4-4-4-3-4-7-8-3-4-3-4-3-4-3-4-3-4-6-6-7-7-0-8-8-8-8-8-8-8-8` | Arrivals and doors until the floor drops. There is no you — 0 dissolves what 4 kept opening. Ends on the octave anyway. |
 
 ---
 
