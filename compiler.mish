@@ -1,0 +1,42 @@
+#!/usr/bin/env mishmaath
+# compiler.mish — mishmaath self-hosting transpiler stage 0
+# reads mishmaath source from stdin, outputs C to stdout
+# handles: 0 1(main) 2(literal) 3(int/str decl) 4(channels) 7
+0
+1 main
+4 stdout
+4 stdin
+3 line
+3 tok
+3 arg
+3 cout
+3 op 0
+2 #include <stdio.h>
+2
+2 int main() {
+9 line stdin
+5 line ""
+5 else
+  6 tok first line
+  5 tok contains #
+  5 else
+    6 op scan line
+    6 arg skip line
+    5 op "2"
+    3 cout "    printf(\""
+    8 cout +arg
+    8 cout +"\\n\");"
+    2 cout
+    5 else op "3"
+    3 cout "    /* "
+    8 cout +arg
+    8 cout +" */"
+    2 cout
+    5 else op "7"
+    2 return 0;
+    2 }
+    5
+  5
+5
+9
+7

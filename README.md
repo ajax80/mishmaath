@@ -80,6 +80,11 @@ Then `chmod +x file.mish && ./file.mish`.
 9 var "val"         while var < val (int) or var != val (string)
 9                   close while block
 9 break             break out of loop
+9 var stdin         while loop reading lines from stdin into var
+9 var file "f.mish" while loop reading lines from file into var
+6 n scan str        parse first integer from string into n
+6 tok first str     extract first whitespace token from string
+6 rest skip str     extract rest of string after first token
 3 name[] size       declare int array of given size
 3 name[] "size"     declare string array of given size
 3 name.0 val        set array element by literal index
@@ -237,7 +242,8 @@ The schema encodes sensory experience. A song becomes a fingerprint — each seg
 - [x] function arguments
 - [x] string operations — concat (`8 str +other`), length (`6 n len str`), search (`5 str contains "needle"`)
 - [x] arrays — int and string, dot-index notation (`name.0`, `name.i`)
-- [ ] self-hosting compiler
+- [x] self-hosting compiler stage 0 — `compiler.mish` reads mishmaath source, outputs C
+- [ ] self-hosting stage 1 — full opcode coverage, compile itself
 
 ---
 
