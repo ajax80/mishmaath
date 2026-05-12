@@ -69,10 +69,16 @@ def transpile(source):
                 if call_args:
                     rendered = []
                     for a in call_args:
-                        if a.startswith('"') or a in current['variables']:
-                            rendered.append(safe_name(a) if a in current['variables'] else a)
+                        if a in current['variables']:
+                            rendered.append(safe_name(a))
+                        elif a.startswith('"'):
+                            rendered.append(a)
                         else:
-                            rendered.append(f'"{a}"')
+                            try:
+                                int(a)
+                                rendered.append(a)
+                            except ValueError:
+                                rendered.append(f'"{a}"')
                     current['body'].append(f'    {safe_name(arg1)}({", ".join(rendered)});')
                 else:
                     current['body'].append(f'    {safe_name(arg1)}();')
@@ -144,7 +150,15 @@ def transpile(source):
         elif op == 6:
             if current is None:
                 continue
-            if arg1 and arg1 in current['variables']:
+            if arg2 and arg2.startswith('len '):
+                src = arg2[4:].strip()
+                includes.add('#include <string.h>')
+                if arg1 in current['variables']:
+                    current['body'].append(f'    {safe_name(arg1)} = strlen({safe_name(src)});')
+                else:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)} = strlen({safe_name(src)});')
+            elif arg1 and arg1 in current['variables']:
                 includes.add('#include <stdio.h>')
                 if current['variables'][arg1] == 'int':
                     prompt = arg2.strip('"') if arg2 else arg1
@@ -168,6 +182,14 @@ def transpile(source):
                 continue
 
             def make_cond(var, tail):
+                if tail.startswith('contains '):
+                    needle = tail[9:].strip().strip('"')
+                    includes.add('#include <string.h>')
+                    return f'strstr({safe_name(var)}, "{needle}") != NULL'
+                if tail.startswith('!contains '):
+                    needle = tail[10:].strip().strip('"')
+                    includes.add('#include <string.h>')
+                    return f'strstr({safe_name(var)}, "{needle}") == NULL'
                 op_str = '=='
                 val = tail
                 for cop in ('!=', '>=', '<=', '>', '<'):
@@ -215,7 +237,15 @@ def transpile(source):
             if arg1 and arg2 and arg2[0] in '+-*/%':
                 sym = arg2[0]
                 val = arg2[1:].strip() or '1'
-                if sym == '+':
+                if current['variables'].get(arg1) == 'str' and sym == '+':
+                    includes.add('#include <string.h>')
+                    if val in current['variables']:
+                        current['body'].append(f'    strcat({safe_name(arg1)}, {safe_name(val)});')
+                    elif val.startswith('"'):
+                        current['body'].append(f'    strcat({safe_name(arg1)}, {val});')
+                    else:
+                        current['body'].append(f'    strcat({safe_name(arg1)}, "{val}");')
+                elif sym == '+':
                     current['body'].append(f'    {safe_name(arg1)}++;' if val == '1' else f'    {safe_name(arg1)} += {val};')
                 elif sym == '-':
                     current['body'].append(f'    {safe_name(arg1)}--;' if val == '1' else f'    {safe_name(arg1)} -= {val};')

@@ -1,0 +1,17 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+3 a "Hello"
+3 b " World"
+8 a +b
+8 a +!
+2 a
+3 n 0
+6 n len a
+2 n
+3 s "the weapon forms itself"
+5 s contains weapon
+2 found
+5
+7

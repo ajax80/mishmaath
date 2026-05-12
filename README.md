@@ -73,6 +73,10 @@ Then `chmod +x file.mish && ./file.mish`.
 6 var "file.txt"    read first line from file into var
 7                   return 0 — gate closes
 8 var +val          arithmetic: +, -, *, /, % (val can be literal or variable)
+8 str +other        string concat: append other string or literal to str
+6 n len str         string length: n = strlen(str)
+5 str contains x    string search: true if x found in str
+5 str !contains x   string search: true if x not found in str
 9 var "val"         while var < val (int) or var != val (string)
 9                   close while block
 9 break             break out of loop
@@ -225,8 +229,8 @@ The schema encodes sensory experience. A song becomes a fingerprint — each seg
 - [x] CLI: `mishmaath file.mish [-c] [-o name]`
 - [x] shebang: `#!/usr/bin/env mishmaath`
 - [x] self-hosting first step — mishmaath described itself and ran
-- [ ] function arguments
-- [ ] string operations (length, concat, search)
+- [x] function arguments
+- [x] string operations — concat (`8 str +other`), length (`6 n len str`), search (`5 str contains "needle"`)
 - [ ] arrays
 - [ ] self-hosting compiler
 
