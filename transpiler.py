@@ -296,7 +296,94 @@ def transpile(source):
                 if arg1 not in current['variables']:
                     current['variables'][arg1] = 'str'
                     current['declarations'].append(f'    char {safe_name(arg1)}[1024];')
-                current['body'].append(f'    {{ char *_sk = strchr({safe_name(src)}, \' \'); strcpy({safe_name(arg1)}, _sk ? _sk + 1 : ""); }}')
+                d, s = safe_name(arg1), safe_name(src)
+                current['body'].append(
+                    '    { char _sk_t[1024]; int _sk_n=0; sscanf(' + s + ', " %1023s%n", _sk_t, &_sk_n);'
+                    ' if (_sk_n>0) { char *_sk_r=' + s + '+_sk_n; while(*_sk_r==32||*_sk_r==9)_sk_r++;'
+                    ' strcpy(_sk_t,_sk_r); strcpy(' + d + ',_sk_t); } else ' + d + '[0]=0; }'
+                )
+            elif arg2 and arg2.startswith('after1 '):
+                src = arg2[7:].strip()
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                d, s = safe_name(arg1), safe_name(src)
+                current['body'].append(
+                    '    { if(' + s + '[0]) memmove(' + d + ',' + s + '+1,strlen(' + s + '));'
+                    ' else ' + d + '[0]=0; }'
+                )
+            elif arg2 and arg2.startswith('strip '):
+                src = arg2[6:].strip()
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[1024];')
+                d, s = safe_name(arg1), safe_name(src)
+                current['body'].append(
+                    '    { strcpy(' + d + ',' + s + ');'
+                    ' char *_se=' + d + '+strlen(' + d + ')-1;'
+                    ' while(_se>' + d + '&&(*_se==32||*_se==10||*_se==13||*_se==9))*_se--=0;'
+                    ' char *_ss=' + d + '; while(*_ss==32||*_ss==9)_ss++;'
+                    ' if(_ss!=' + d + ')memmove(' + d + ',_ss,strlen(_ss)+1); }'
+                )
+            elif arg2 and arg2.startswith('chop '):
+                src = arg2[5:].strip()
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                d, s = safe_name(arg1), safe_name(src)
+                current['body'].append(
+                    '    { strcpy(' + d + ',' + s + '); int _cl=strlen(' + d + ');'
+                    ' if(_cl>=2)' + d + '[_cl-2]=0; }'
+                )
+            elif arg2 and arg2.startswith('unquote '):
+                src = arg2[8:].strip()
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                d, s = safe_name(arg1), safe_name(src)
+                current['body'].append(
+                    '    { int _ul=strlen(' + s + ');'
+                    ' if(_ul>=2&&' + s + '[0]==34&&' + s + '[_ul-1]==34)'
+                    '{ strncpy(' + d + ',' + s + '+1,_ul-2); ' + d + '[_ul-2]=0; }'
+                    ' else strcpy(' + d + ',' + s + '); }'
+                )
+            elif arg2 and arg2.startswith('dotbase '):
+                src = arg2[8:].strip()
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                d, s = safe_name(arg1), safe_name(src)
+                current['body'].append(
+                    '    { strcpy(' + d + ',' + s + '); char *_dp=strchr(' + d + ',\'.\');'
+                    ' if(_dp)*_dp=0; }'
+                )
+            elif arg2 and arg2.startswith('dotidx '):
+                src = arg2[7:].strip()
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                d, s = safe_name(arg1), safe_name(src)
+                current['body'].append(
+                    '    { char *_di=strchr(' + s + ',\'.\');'
+                    ' strcpy(' + d + ',_di ? _di+1 : ""); }'
+                )
+            elif arg2 and arg2.startswith('bracket '):
+                src = arg2[8:].strip()
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                d, s = safe_name(arg1), safe_name(src)
+                current['body'].append(
+                    '    { strcpy(' + d + ',' + s + '); char *_bp=strchr(' + d + ',\'.\');'
+                    ' if(_bp){ *_bp=\'[\'; strcat(' + d + ',"]\"); } }'
+                )
             elif arg1 and arg1 in current['variables']:
                 includes.add('#include <stdio.h>')
                 if current['variables'][arg1] == 'int':
@@ -321,27 +408,49 @@ def transpile(source):
                 continue
 
             def make_cond(var, tail):
+                all_vars = dict(global_vars)
+                all_vars.update(current['variables'])
+                def is_known_var(n):
+                    return n in all_vars and not n.startswith('"')
+                def var_type_of(n):
+                    return current['variables'].get(n, global_vars.get(n, ''))
+                # determine lhs type — handles array elements like inames.i
+                var_base = var.split('.')[0] if '.' in var else var
+                lhs_type = var_type_of(var) or var_type_of(var_base)
+                lhs_is_int = lhs_type in ('int', 'int*') or (
+                    '.' in var and var_type_of(var_base) == 'int[]')
                 if tail.startswith('contains '):
-                    needle = unquote(tail[9:].strip())
+                    needle_raw = tail[9:].strip()
+                    needle = unquote(needle_raw)
                     includes.add('#include <string.h>')
+                    if is_known_var(needle_raw):
+                        return f'strstr({safe_name(var)}, {safe_name(needle_raw)}) != NULL'
                     return f'strstr({safe_name(var)}, "{needle}") != NULL'
                 if tail.startswith('!contains '):
-                    needle = unquote(tail[10:].strip())
+                    needle_raw = tail[10:].strip()
+                    needle = unquote(needle_raw)
                     includes.add('#include <string.h>')
+                    if is_known_var(needle_raw):
+                        return f'strstr({safe_name(var)}, {safe_name(needle_raw)}) == NULL'
                     return f'strstr({safe_name(var)}, "{needle}") == NULL'
                 op_str = '=='
-                val = tail
+                val_raw = tail
                 for cop in ('!=', '>=', '<=', '>', '<'):
                     if tail.startswith(cop):
                         op_str = cop
-                        val = tail[len(cop):].strip()
+                        val_raw = tail[len(cop):].strip()
                         break
-                val = unquote(val)
-                if var in current['variables'] and current['variables'][var] in ('int', 'int*'):
-                    return f'{emit_val(var, current["variables"])} {op_str} {val}'
+                val = unquote(val_raw)
+                rhs_is_var = is_known_var(val_raw)
+                if lhs_is_int:
+                    lhs = emit_val(var, current['variables']) if var in current['variables'] else safe_name(var)
+                    rhs = emit_val(val_raw, current['variables']) if rhs_is_var and val_raw in current['variables'] else val
+                    return f'{lhs} {op_str} {rhs}'
                 else:
                     includes.add('#include <string.h>')
                     eq = '== 0' if op_str == '==' else ('!= 0' if op_str == '!=' else f'{op_str} 0')
+                    if rhs_is_var:
+                        return f'strcmp({safe_name(var)}, {safe_name(val_raw)}) {eq}'
                     return f'strcmp({safe_name(var)}, "{val}") {eq}'
 
             if not arg1:

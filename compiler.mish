@@ -1,42 +1,976 @@
 #!/usr/bin/env mishmaath
-# compiler.mish — mishmaath self-hosting transpiler stage 0
-# reads mishmaath source from stdin, outputs C to stdout
-# handles: 0 1(main) 2(literal) 3(int/str decl) 4(channels) 7
+# compiler.mish — mishmaath stage 1 self-hosting transpiler
+# full opcode coverage; compiles itself
 0
+
+3 inames[] "32"
+3 snames[] "32"
+3 fnames[] "32"
+3 nint 0
+3 nstr 0
+3 nfuncs 0
+3 in_func 0
+3 gint 0
+3 gstr 0
+3 seen_func 0
+
+1 reg_int name
+3 inames.nint name
+8 nint +1
+7
+
+1 reg_str name
+3 snames.nstr name
+8 nstr +1
+7
+
+1 reg_func name
+3 fnames.nfuncs name
+8 nfuncs +1
+7
+
+1 is_int name
+3 i 0
+3 found 0
+9 i nint
+5 inames.i name
+3 found 1
+5
+8 i +1
+9
+7 found
+
+1 is_str name
+3 i 0
+3 found 0
+9 i nstr
+5 snames.i name
+3 found 1
+5
+8 i +1
+9
+7 found
+
+1 is_func name
+3 i 0
+3 found 0
+9 i nfuncs
+5 fnames.i name
+3 found 1
+5
+8 i +1
+9
+7 found
+
 1 main
 4 stdout
 4 stdin
+4 string
 3 line
 3 tok
 3 arg
-3 cout
+3 a1
+3 a2
+3 emit
+3 tmp
+3 base
+3 idx
+3 csyn
+3 sym
 3 op 0
+3 res 0
+3 res2 0
+
 2 #include <stdio.h>
+2 #include <string.h>
 2
-2 int main() {
+
 9 line stdin
+6 line strip line
 5 line ""
 5 else
-  6 tok first line
-  5 tok contains #
-  5 else
-    6 op scan line
-    6 arg skip line
-    5 op "2"
-    3 cout "    printf(\""
-    8 cout +arg
-    8 cout +"\\n\");"
-    2 cout
-    5 else op "3"
-    3 cout "    /* "
-    8 cout +arg
-    8 cout +" */"
-    2 cout
-    5 else op "7"
-    2 return 0;
-    2 }
-    5
-  5
+6 tok first line
+5 tok contains "#"
+5 else
+6 op scan line
+6 arg skip line
+6 arg strip arg
+
+5 op "0"
+2
+
+5 else op "1"
+5 in_func "1"
+2 }
+2
+3 in_func 0
+5
+5 seen_func "0"
+3 gint nint
+3 gstr nstr
+3 seen_func 1
+5 else
+3 nint gint
+3 nstr gstr
+5
+6 tok first arg
+6 a2 skip arg
+4 reg_func tok
+3 in_func 1
+3 emit "int "
+8 emit +tok
+8 emit +"("
+5 a2 ""
+8 emit +")"
+5 else
+6 tmp first a2
+5 tmp contains "&"
+6 base after1 tmp
+4 reg_int base
+8 emit +"int *"
+8 emit +base
+5 else tmp contains "#"
+6 base after1 tmp
+4 reg_int base
+8 emit +"int "
+8 emit +base
+5 else
+4 reg_str tmp
+8 emit +"char *"
+8 emit +tmp
+5
+8 emit +")"
+5
+8 emit +" {"
+2 emit
+
+5 else op "2"
+5 arg ""
+5 in_func "1"
+3 emit "    printf(\"\\n\");"
+2 emit
+5 else
+3 emit "printf(\"\\n\");"
+2 emit
+5
+5 else
+3 res is_int arg
+5 res "1"
+5 in_func "1"
+3 emit "    printf(\"%d\\n\", "
+5 else
+3 emit "printf(\"%d\\n\", "
+5
+8 emit +arg
+8 emit +");"
+2 emit
+5 else
+3 res is_str arg
+5 res "1"
+5 in_func "1"
+3 emit "    printf(\"%s\\n\", "
+5 else
+3 emit "printf(\"%s\\n\", "
+5
+8 emit +arg
+8 emit +");"
+2 emit
+5 else
+5 in_func "1"
+3 emit "    printf(\""
+5 else
+3 emit "printf(\""
+5
+8 emit +arg
+8 emit +"\\n\");"
+2 emit
+5
+5
+5
+
+5 else op "3"
+6 tok first arg
+6 a2 skip arg
+5 tok contains "[]"
+6 base chop tok
+5 a2 contains "\""
+4 reg_str base
+6 tmp unquote a2
+5 in_func "1"
+3 emit "    char "
+5 else
+3 emit "char "
+5
+8 emit +base
+8 emit +"["
+8 emit +tmp
+8 emit +"][256];"
+2 emit
+5 else
+4 reg_int base
+5 in_func "1"
+3 emit "    int "
+5 else
+3 emit "int "
+5
+8 emit +base
+8 emit +"["
+8 emit +a2
+8 emit +"];"
+2 emit
+5
+5 else tok contains "."
+6 base dotbase tok
+6 csyn bracket tok
+3 res2 is_str base
+5 res2 "1"
+5 a2 ""
+5 else
+5 in_func "1"
+3 emit "    strcpy("
+5 else
+3 emit "strcpy("
+5
+8 emit +csyn
+8 emit +", "
+8 emit +a2
+8 emit +");"
+2 emit
+5
+5 else
+5 a2 ""
+5 else
+5 in_func "1"
+3 emit "    "
+5 else
+3 emit ""
+5
+8 emit +csyn
+8 emit +" = "
+8 emit +a2
+8 emit +";"
+2 emit
+5
+5
+5 else
+3 res is_int tok
+5 res "1"
+5 a2 ""
+5 else
+6 tmp first a2
+3 res2 is_func tmp
+5 res2 "1"
+6 base skip a2
+5 in_func "1"
+3 emit "    "
+5 else
+3 emit ""
+5
+8 emit +tok
+8 emit +" = "
+8 emit +tmp
+8 emit +"("
+5 base ""
+8 emit +");"
+5 else
+8 emit +base
+8 emit +");"
+5
+2 emit
+5 else
+5 in_func "1"
+3 emit "    "
+5 else
+3 emit ""
+5
+8 emit +tok
+8 emit +" = "
+8 emit +a2
+8 emit +";"
+2 emit
+5
+5
+5 else
+3 res is_str tok
+5 res "1"
+5 a2 ""
+5 else
+5 a2 contains "\""
+5 in_func "1"
+3 emit "    strcpy("
+5 else
+3 emit "strcpy("
+5
+8 emit +tok
+8 emit +", "
+8 emit +a2
+8 emit +");"
+2 emit
+5 else
+6 tmp first a2
+3 res2 is_func tmp
+5 res2 "1"
+6 base skip a2
+5 in_func "1"
+3 emit "    "
+5 else
+3 emit ""
+5
+8 emit +tok
+8 emit +" = "
+8 emit +tmp
+8 emit +"("
+5 base ""
+8 emit +");"
+5 else
+8 emit +base
+8 emit +");"
+5
+2 emit
+5 else
+5 in_func "1"
+3 emit "    strcpy("
+5 else
+3 emit "strcpy("
+5
+8 emit +tok
+8 emit +", "
+8 emit +a2
+8 emit +");"
+2 emit
+5
+5
+5
+5 else
+5 a2 ""
+4 reg_str tok
+5 in_func "1"
+3 emit "    char "
+5 else
+3 emit "char "
+5
+8 emit +tok
+8 emit +"[256];"
+2 emit
+5 else
+5 a2 contains "\""
+4 reg_str tok
+5 in_func "1"
+3 emit "    char "
+5 else
+3 emit "char "
+5
+8 emit +tok
+8 emit +"[256] = "
+8 emit +a2
+8 emit +";"
+2 emit
+5 else
+6 tmp first a2
+3 res2 is_func tmp
+5 res2 "1"
+4 reg_int tok
+6 base skip a2
+5 in_func "1"
+3 emit "    int "
+5 else
+3 emit "int "
+5
+8 emit +tok
+8 emit +" = "
+8 emit +tmp
+8 emit +"("
+5 base ""
+8 emit +");"
+5 else
+8 emit +base
+8 emit +");"
+5
+2 emit
+5 else
+4 reg_int tok
+5 in_func "1"
+3 emit "    int "
+5 else
+3 emit "int "
+5
+8 emit +tok
+8 emit +" = "
+8 emit +a2
+8 emit +";"
+2 emit
+5
+5
+5
+5
+5
+5
+
+5 else op "4"
+6 tok first arg
+6 a2 skip arg
+5 tok "stdout"
+5 else tok "stdin"
+5 else tok "string"
+5 else tok "file"
+5 else
+3 res is_func tok
+5 res "1"
+5 in_func "1"
+3 emit "    "
+5 else
+3 emit ""
+5
+8 emit +tok
+8 emit +"("
+5 a2 ""
+8 emit +");"
+5 else
+8 emit +a2
+8 emit +");"
+5
+2 emit
+5
+5
+
+5 else op "5"
+5 arg ""
+5 in_func "1"
+2     }
+5 else
+2 }
+5
+5 else
+6 a1 first arg
+6 a2 skip arg
+5 a1 "else"
+5 a2 ""
+5 in_func "1"
+2     } else {
+5 else
+2 } else {
+5
+5 else
+6 tok first a2
+6 tmp skip a2
+3 res is_int tok
+5 res "1"
+6 base unquote tmp
+5 in_func "1"
+3 emit "    } else if ("
+5 else
+3 emit "} else if ("
+5
+8 emit +tok
+8 emit +" == "
+8 emit +base
+8 emit +") {"
+2 emit
+5 else
+5 tmp contains "contains"
+6 sym first tmp
+6 tmp skip tmp
+5 in_func "1"
+3 emit "    } else if (strstr("
+5 else
+3 emit "} else if (strstr("
+5
+8 emit +tok
+8 emit +", "
+8 emit +tmp
+8 emit +") != NULL) {"
+2 emit
+5 else
+5 in_func "1"
+3 emit "    } else if (strcmp("
+5 else
+3 emit "} else if (strcmp("
+5
+8 emit +tok
+8 emit +", "
+8 emit +tmp
+8 emit +") == 0) {"
+2 emit
+5
+5
+5
+5 else
+5 a2 contains "contains "
+6 tmp first a2
+6 a2 skip a2
+5 a1 contains "."
+6 csyn bracket a1
+5 else
+3 csyn a1
+5
+5 tmp "!contains"
+5 in_func "1"
+3 emit "    if (strstr("
+5 else
+3 emit "if (strstr("
+5
+8 emit +csyn
+8 emit +", "
+8 emit +a2
+8 emit +") == NULL) {"
+2 emit
+5 else
+5 in_func "1"
+3 emit "    if (strstr("
+5 else
+3 emit "if (strstr("
+5
+8 emit +csyn
+8 emit +", "
+8 emit +a2
+8 emit +") != NULL) {"
+2 emit
+5
+5 else
+5 a1 contains "."
+6 csyn bracket a1
+5 else
+3 csyn a1
+5
+3 res is_int a1
+5 res "1"
+6 base unquote a2
+5 in_func "1"
+3 emit "    if ("
+5 else
+3 emit "if ("
+5
+8 emit +csyn
+8 emit +" == "
+8 emit +base
+8 emit +") {"
+2 emit
+5 else
+5 in_func "1"
+3 emit "    if (strcmp("
+5 else
+3 emit "if (strcmp("
+5
+8 emit +csyn
+8 emit +", "
+8 emit +a2
+8 emit +") == 0) {"
+2 emit
+5
+5
+5
+5
+
+5 else op "6"
+6 tok first arg
+6 a2 skip arg
+5 a2 contains "first"
+6 tmp first a2
+6 tmp skip a2
+5 in_func "1"
+3 emit "    sscanf("
+5 else
+3 emit "sscanf("
+5
+8 emit +tmp
+8 emit +", \"%s\", "
+8 emit +tok
+8 emit +");"
+2 emit
+5 else a2 contains "skip"
+6 tmp first a2
+6 tmp skip a2
+5 in_func "1"
+3 emit "    { char _sk_t[1024]; int _sk_n=0; sscanf("
+5 else
+3 emit "{ char _sk_t[1024]; int _sk_n=0; sscanf("
+5
+8 emit +tmp
+8 emit +", \" %1023s%n\", _sk_t, &_sk_n);"
+8 emit +" if (_sk_n>0) { char *_sk_r="
+8 emit +tmp
+8 emit +"+_sk_n; while(*_sk_r==32||*_sk_r==9)_sk_r++;"
+8 emit +" strcpy(_sk_t,_sk_r); strcpy("
+8 emit +tok
+8 emit +",_sk_t); } else "
+8 emit +tok
+8 emit +"[0]=0; }"
+2 emit
+5 else a2 contains "scan"
+6 tmp first a2
+6 tmp skip a2
+5 in_func "1"
+3 emit "    sscanf("
+5 else
+3 emit "sscanf("
+5
+8 emit +tmp
+8 emit +", \"%d\", &"
+8 emit +tok
+8 emit +");"
+2 emit
+5 else a2 contains "len"
+6 tmp first a2
+6 tmp skip a2
+5 in_func "1"
+3 emit "    "
+5 else
+3 emit ""
+5
+8 emit +tok
+8 emit +" = strlen("
+8 emit +tmp
+8 emit +");"
+2 emit
+5 else a2 contains "after1"
+6 tmp first a2
+6 tmp skip a2
+5 in_func "1"
+3 emit "    { if("
+5 else
+3 emit "{ if("
+5
+8 emit +tmp
+8 emit +"[0]) memmove("
+8 emit +tok
+8 emit +","
+8 emit +tmp
+8 emit +"+1,strlen("
+8 emit +tmp
+8 emit +")); else "
+8 emit +tok
+8 emit +"[0]=0; }"
+2 emit
+5 else a2 contains "strip"
+6 tmp first a2
+6 tmp skip a2
+5 in_func "1"
+3 emit "    { strcpy("
+5 else
+3 emit "{ strcpy("
+5
+8 emit +tok
+8 emit +","
+8 emit +tmp
+8 emit +"); char *_se="
+8 emit +tok
+8 emit +"+strlen("
+8 emit +tok
+8 emit +")-1; while(_se>"
+8 emit +tok
+8 emit +"&&(*_se==32||*_se==10||*_se==13||*_se==9))*_se--=0;"
+8 emit +" char *_ss="
+8 emit +tok
+8 emit +"; while(*_ss==32||*_ss==9)_ss++;"
+8 emit +" if(_ss!="
+8 emit +tok
+8 emit +")memmove("
+8 emit +tok
+8 emit +",_ss,strlen(_ss)+1); }"
+2 emit
+5 else a2 contains "chop"
+6 tmp first a2
+6 tmp skip a2
+5 in_func "1"
+3 emit "    { strcpy("
+5 else
+3 emit "{ strcpy("
+5
+8 emit +tok
+8 emit +","
+8 emit +tmp
+8 emit +"); int _cl=strlen("
+8 emit +tok
+8 emit +"); if(_cl>=2)"
+8 emit +tok
+8 emit +"[_cl-2]=0; }"
+2 emit
+5 else a2 contains "unquote"
+6 tmp first a2
+6 tmp skip a2
+5 in_func "1"
+3 emit "    { int _ul=strlen("
+5 else
+3 emit "{ int _ul=strlen("
+5
+8 emit +tmp
+8 emit +"); if(_ul>=2&&"
+8 emit +tmp
+8 emit +"[0]==34&&"
+8 emit +tmp
+8 emit +"[_ul-1]==34){strncpy("
+8 emit +tok
+8 emit +","
+8 emit +tmp
+8 emit +"+1,_ul-2);"
+8 emit +tok
+8 emit +"[_ul-2]=0;}else strcpy("
+8 emit +tok
+8 emit +","
+8 emit +tmp
+8 emit +"); }"
+2 emit
+5 else a2 contains "dotbase"
+6 tmp first a2
+6 tmp skip a2
+5 in_func "1"
+3 emit "    { strcpy("
+5 else
+3 emit "{ strcpy("
+5
+8 emit +tok
+8 emit +","
+8 emit +tmp
+8 emit +"); char *_dp=strchr("
+8 emit +tok
+8 emit +",'.')"
+8 emit +"; if(_dp)*_dp=0; }"
+2 emit
+5 else a2 contains "dotidx"
+6 tmp first a2
+6 tmp skip a2
+5 in_func "1"
+3 emit "    { char *_di=strchr("
+5 else
+3 emit "{ char *_di=strchr("
+5
+8 emit +tmp
+8 emit +",'.'); strcpy("
+8 emit +tok
+8 emit +",_di ? _di+1 : \"\"); }"
+2 emit
+5 else a2 contains "bracket"
+6 tmp first a2
+6 tmp skip a2
+5 in_func "1"
+3 emit "    { strcpy("
+5 else
+3 emit "{ strcpy("
+5
+8 emit +tok
+8 emit +","
+8 emit +tmp
+8 emit +"); char *_bp=strchr("
+8 emit +tok
+8 emit +",'.')"
+8 emit +"; if(_bp){ *_bp='['; strcat("
+8 emit +tok
+8 emit +",\"]\"); } }"
+2 emit
+5 else
+5 in_func "1"
+3 emit "    fgets("
+5 else
+3 emit "fgets("
+5
+8 emit +tok
+8 emit +", sizeof("
+8 emit +tok
+8 emit +"), stdin);"
+2 emit
+5
+
+5 else op "7"
+5 arg ""
+2     return 0;
+2 }
+2
+3 in_func 0
+5 else
+5 in_func "1"
+3 emit "    return "
+5 else
+3 emit "return "
+5
+8 emit +arg
+8 emit +";"
+2 emit
+2 }
+2
+3 in_func 0
+5
+
+5 else op "8"
+6 tok first arg
+6 a2 skip arg
+6 sym after1 a2
+3 res is_str tok
+5 res "1"
+5 in_func "1"
+3 emit "    strcat("
+5 else
+3 emit "strcat("
+5
+8 emit +tok
+8 emit +", "
+8 emit +sym
+8 emit +");"
+2 emit
+5 else
+5 a2 contains "-"
+5 in_func "1"
+3 emit "    "
+5 else
+3 emit ""
+5
+8 emit +tok
+8 emit +" -= "
+8 emit +sym
+8 emit +";"
+2 emit
+5 else a2 contains "*"
+5 in_func "1"
+3 emit "    "
+5 else
+3 emit ""
+5
+8 emit +tok
+8 emit +" *= "
+8 emit +sym
+8 emit +";"
+2 emit
+5 else a2 contains "/"
+5 in_func "1"
+3 emit "    "
+5 else
+3 emit ""
+5
+8 emit +tok
+8 emit +" /= "
+8 emit +sym
+8 emit +";"
+2 emit
+5 else a2 contains "%"
+5 in_func "1"
+3 emit "    "
+5 else
+3 emit ""
+5
+8 emit +tok
+8 emit +" %= "
+8 emit +sym
+8 emit +";"
+2 emit
+5 else
+5 sym "1"
+5 in_func "1"
+3 emit "    "
+5 else
+3 emit ""
+5
+8 emit +tok
+8 emit +"++;"
+2 emit
+5 else
+5 in_func "1"
+3 emit "    "
+5 else
+3 emit ""
+5
+8 emit +tok
+8 emit +" += "
+8 emit +sym
+8 emit +";"
+2 emit
+5
+5
+5
+
+5 else op "9"
+5 arg ""
+5 in_func "1"
+2     }
+5 else
+2 }
+5
+5 else arg "break"
+5 in_func "1"
+2     break;
+5 else
+2 break;
+5
+5 else
+6 tok first arg
+6 a2 skip arg
+5 a2 "stdin"
+5 in_func "1"
+3 emit "    while (fgets("
+5 else
+3 emit "while (fgets("
+5
+8 emit +tok
+8 emit +", sizeof("
+8 emit +tok
+8 emit +"), stdin)) {"
+2 emit
+5 in_func "1"
+3 emit "        "
+5 else
+3 emit "    "
+5
+8 emit +tok
+8 emit +"[strcspn("
+8 emit +tok
+8 emit +", \"\\n\")] = 0;"
+2 emit
+5 else
+3 res is_int tok
+5 res "1"
+5 in_func "1"
+3 emit "    while ("
+5 else
+3 emit "while ("
+5
+8 emit +tok
+8 emit +" < "
+8 emit +a2
+8 emit +") {"
+2 emit
+5 else
+5 in_func "1"
+3 emit "    while (strcmp("
+5 else
+3 emit "while (strcmp("
+5
+8 emit +tok
+8 emit +", "
+8 emit +a2
+8 emit +") != 0) {"
+2 emit
+5
+5
+5
+
+5 else op "10"
+6 tok first arg
+6 a2 skip arg
+3 res is_int tok
+5 res "1"
+5 in_func "1"
+3 emit "    { FILE *_wf=fopen("
+5 else
+3 emit "{ FILE *_wf=fopen("
+5
+8 emit +a2
+8 emit +",\"a\"); if(_wf){fprintf(_wf,\"%d\\n\","
+8 emit +tok
+8 emit +");fclose(_wf);} }"
+2 emit
+5 else
+5 in_func "1"
+3 emit "    { FILE *_wf=fopen("
+5 else
+3 emit "{ FILE *_wf=fopen("
+5
+8 emit +a2
+8 emit +",\"a\"); if(_wf){fprintf(_wf,\"%s\\n\","
+8 emit +tok
+8 emit +");fclose(_wf);} }"
+2 emit
+5
+
+5
+5
 5
 9
 7
