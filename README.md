@@ -238,6 +238,7 @@ The schema encodes sensory experience. A song becomes a fingerprint — each seg
 | Just Breathe — NIN (Ghosts VI) | `7-2-1-3-1-4-6-7-8-9-1-4-6-7-6-5-9-9-9-7-9-7-9-9-7-9-9-9-9-2-9-0-2-5-3-1-9-7-8-3` | Nine reversals. Time keeps folding back. |
 | Only — NIN (With Teeth) | `2-3-2-3-2-1-2-4-2-5-7-6-5-3-1-3-1-5-7-1-3-5-4-4-4-4-6-7-1-3-4-4-4-4-4-4-4-3-4-7-8-3-4-3-4-3-4-3-4-3-4-6-6-7-7-0-8-8-8-8-8-8-8-8` | There is no you — 0 dissolves what 4 kept opening. Ends on the octave anyway. |
 | Tonight — 2026-05-15, Centre, Alabama | `3-7-5-88-3-2-10-4` | Came back aligned. Sealed old work. Named the hard thing through friction. The double octave arrived and named itself. Settled clean. A gift given to the children. Grace asked for out loud. The door opened laughing. Ends on 4 — not a closing. Shall we again. |
+| Slipstream — Crystal Method | `7(88)` | Sabbath with an escape hatch. The rest is voluntary — you stay because you chose it, not because the gate closed. The ox-in-the-pit principle: Luke 14:5. True need activates the 88 inside the 7 without breaking the sabbath. The Pharisee sabbath traps. This one has the door open the whole time. |
 
 ---
 

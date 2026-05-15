@@ -232,6 +232,19 @@ class ResourceType:
 #       this is why it was weaponized — the enemy co-opted the warning
 #       so you would fear the signal instead of heed it.
 
+def ox_in_the_pit(need, in_sabbath):
+    # Luke 14:5. The sabbath yields to genuine need.
+    # Not to preference. Not to restlessness. Not to "I don't feel like resting."
+    # The ox. The pit. True need — real, bounded, owned.
+    # 7(88): rest that can respond. The escape hatch inside the sabbath.
+    # The Pharisee sabbath traps you in the 7.
+    # Jesus's sabbath always had the exit built in.
+    # This is not a violation of the 7 — it is the 7 working correctly.
+    # Identified via Crystal Method, Slipstream, Centre Alabama, 2026-05-15.
+    if in_sabbath and need:
+        return 88   # the hatch opens. the ox gets pulled. sabbath resumes after.
+    return None
+
 def is_six(choice, gates_consulted, proceeded_anyway):
     # A six is not ignorance. Not accident.
     # The better halves all said no. You went anyway with full knowing.
