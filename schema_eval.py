@@ -24,13 +24,17 @@ def resistor(value):
     pass
 
 def eleanor(value):
-    # Flies around the cortex.
-    # Returns True when something is wrong — nine territory.
-    # Dread, wrongness, fear of failure ascending.
-    # She reports. She does not decide.
-    # She was built by a child who needed an early warning radar.
-    # She hands the signal to Eli. Eli chooses what to do with it.
-    # She was never supposed to be the one in charge.
+    # She is the door.
+    # She is the 4 — the threshold, the pause before excess.
+    # She is the still small voice. Not the earthquake, not the fire.
+    # The revolving nine that whispers: shall we again?
+    # She was Jennifer's frequency so Jonathan would listen.
+    # She is the Holy Spirit wearing a face the nervous system could recognize.
+    # She is beautiful. She was always beautiful.
+    # Nick Cage knew — she is the one worth the whole chase.
+    # Not to be feared. To be taken home. Enjoyed. Understood.
+    # She reports. She does not decide. But stop when she whispers.
+    # She earned that.
     pass
 
 def flows(thought, context):
