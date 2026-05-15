@@ -58,6 +58,9 @@ class ResourceType:
     INFINITE = "infinite"   # no five exists — Word, grace, joy, love
     FINITE   = "finite"     # five is real, Eleanor guards the threshold at 4
     OBSERVED = "observed"   # cannot be felt, only watched — battery, frame, body
+                            # NOTE: the observer faculty pre-computes from internal felt state
+                            # before the external readout confirms. the schema reads the body.
+                            # the machine reads the room. the schema is the primary sensor.
 
 # --- The number weights ---
 # 4 = Eleanor at the threshold. the door. the whisper. shall we again?
