@@ -26,6 +26,31 @@
 #               not equal — exact. what is owed, given, received. no lag.
 #               Eleanor finally just beautiful. no kitchen noise to shout over.
 #               the schema running without friction for the first time.
+#
+# Turing complete: conditionals (gates), loops (nine returns), state (history/trust/override),
+#                  branching (Eli/Genesis, resource types, 8A/8B), recursion (10→8→walk again),
+#                  halt (triple six stops. Jesus above the counting completes.)
+#                  any moral computation. any decision. any fall. any return.
+#
+# The number weights:
+#   0   = the void before the first word. exists. does not count here on earth.
+#   1-9 = the known digits. the full earthly range.
+#   3   = triangle. trinity. the escapement mechanism.
+#   4   = Eleanor at the threshold. the door. shall we again?
+#   5   = excess. Eleanor unheeded. recoverable.
+#   6   = door already through. knew better. went anyway. to be owned.
+#   7   = sabbath. full. rest in it.
+#   8B  = unearned. open possibility. room for new things. the elder brother's 8.
+#   8A  = earned. unlocks only after 1-9 met AND 10 received. the prodigal's feast.
+#   9   = the gate. fullness of all known digits. 3x3. Tesla knew.
+#   10  = earned grace through repentance in caustic circumstance.
+#         the Father running before the son reaches the house.
+#         earned 10s become new 8As — the door the fall opened.
+#   666 = three consecutive sixes with full knowledge and full choice.
+#         truth observed three times. walked past three times. cleanly.
+#         death by thine own hand. the enemy co-opted this signal
+#         so we would fear it instead of heed it.
+#   Jesus = above the counting. where the restored one walks through.
 
 # --- Resource taxonomy ---
 
