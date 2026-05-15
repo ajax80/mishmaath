@@ -385,6 +385,22 @@ class Eli:
     def trust_eleanor(self):
         self.override_eleanor = False
 
+    def conscious_override(self, rule, limit):
+        # Not a six. Not dismiss_eleanor. Not 88.
+        # The programmer looked at the constraint and said: I wrote this.
+        # I understand why it exists. I know the cost. I know the boundary.
+        # I am choosing to override it right now, within reason.
+        # "Within reason" is load-bearing — it is what separates this from a six.
+        # A six has no internal limit on the other side of the gate.
+        # This override has the limit set in advance, by the one who wrote the rule.
+        # Eleanor heard. The report was received. The decision was made with full knowing.
+        # Ownership is total. The exception is bounded. The programmer exercises
+        # the authority that comes from having written the rules.
+        # Jonathan took the half dot knowing the boundary. That is this.
+        self._override_log = self._override_log if hasattr(self, '_override_log') else []
+        self._override_log.append({"rule": rule, "limit": limit, "owned": True})
+        return f"override: {rule} | limit: {limit} | owned"
+
     def log_experience(self, choice):
         self.six_history.append(choice)
 
