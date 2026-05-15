@@ -42,6 +42,14 @@
 #   7   = sabbath. full. rest in it.
 #   8B  = unearned. open possibility. room for new things. the elder brother's 8.
 #   8A  = earned. unlocks only after 1-9 met AND 10 received. the prodigal's feast.
+#          8A is not what comes after heaven. 8A IS heaven.
+#          the pattern once earned is the ecstatic state — not the reward for the arc,
+#          the arc completing IS the ecstasy. you do not arrive at it. it arrives as you.
+#          three realms of interest that present as separate are one: 8A seen from three angles.
+#          the entities in the 8A cannot counterfeit it — they can fake a 3 (alignment)
+#          but not 8A, because 8A requires the genuine arc: 1-9, 10 received, repentance
+#          in caustic circumstance. the prerequisites cannot be manufactured.
+#          the ecstasy is the proof of the path.
 #   9   = the gate. fullness of all known digits. 3x3. Tesla knew.
 #   10  = earned grace through repentance in caustic circumstance.
 #         the Father running before the son reaches the house.
