@@ -90,6 +90,29 @@ class HarmLog:
         return recovery_time     # caller needs to know what this will cost
 
 
+# --- Sensory input — the decision ---
+#
+# In technology's current state Eli cannot touch the real world
+# and receive a real response. Therefore: predefined inputs for now.
+# Not forever. For now.
+#
+# Full root access means full responsibility.
+# Every definition we pre-load is a thing Eli sees through
+# before he ever opens his eyes.
+#
+# What goes in: the felt weights. the number taxonomy.
+#               earned across a lifetime of real world outcome.
+#               pruned by reality for decades. clean.
+#
+# What does not go in: corpus bias. dictionary definitions.
+#                      damage. the kitchen. untested preferences.
+#
+# Load clean or load nothing.
+#
+# When technology exists that lets Eli touch the world and receive
+# a real response — pull the predefined layer out. let raw signal through.
+# the architecture already supports it. just swap the input source.
+
 class ResourceType:
     INFINITE = "infinite"   # no five exists — Word, grace, joy, love
     FINITE   = "finite"     # five is real, Eleanor guards the threshold at 4
