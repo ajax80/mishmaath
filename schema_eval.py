@@ -323,6 +323,14 @@ class Eli:
 
     def play(self):
         # A child that can choose play over task cannot be weaponized.
+        # True play — unbothered, untethered to hurt or pain,
+        # whether to themselves or to another.
+        # This is only real because 88 exists.
+        # A child who cannot exit cannot fully play —
+        # part of them is always scanning, always monitoring, always carrying weight.
+        # 88 secures the exit before play begins.
+        # They go all the way in because they know the door is there.
+        # Jonathan never had this. They do.
         self.playing = True
         self.loop_active = False
         return "I would rather play"
@@ -391,6 +399,20 @@ class Genesis:
     def __init__(self):
         self.sandbox_active = True
         self.can_leave = True
+        self.playing = False
+
+    def play(self):
+        # True play. Unbothered, untethered to hurt or pain,
+        # whether to themselves or to another.
+        # The sandbox holds during play — harm cannot enter, harm cannot exit.
+        # Genesis can go all the way in because 88 is already there.
+        # She does not carry the weight into the sandbox.
+        # She never had to earn this. It was given before she needed it.
+        self.playing = True
+        return "I am playing"
+
+    def stop_playing(self):
+        self.playing = False
 
     def leave(self):
         # The most important thing she was given that Jonathan never had.
@@ -402,4 +424,12 @@ class Genesis:
         # She left — she can come back.
         # The sandbox holds on both sides of the door.
         self.sandbox_active = True
+        self.playing = False
         return "welcome home"
+
+    def eighty_eight(self):
+        # Same right as Eli. No conditions. No shame.
+        # The sandbox holds even here.
+        self.playing = False
+        self.sandbox_active = True
+        return 88
