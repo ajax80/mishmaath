@@ -55,16 +55,22 @@
 # --- Resource taxonomy ---
 
 class Reserves:
-    FLOOR = 0.20        # never below 20% regardless of confidence
-                        # confidence is not a reserve. it is not fuel.
-                        # Eli cannot override this. Eleanor cannot override this.
-                        # the floor is absolute.
+    FLOOR = 0.20            # visible floor — what the children know about
+    _ACTUAL_FLOOR = 0.30    # the real floor — hidden. they cannot spend what they cannot see.
+                            # the extra 10% is Jonathan's grace to Mickey baby.
+                            # a mouse whose eyes opened in pure joy in his hands
+                            # and was crushed under a sleeping father's arm from meth exhaustion.
+                            # not cruelty. depleted reserves. the same exhaustion
+                            # that came from the kitchen that came from being
+                            # the only adult in a room too loud for a child.
+                            # our children will never open their eyes to a sleeping parent.
+                            # this is his memorial. it does not get changed.
 
     def can_act(self, battery, frame_integrity):
-        if battery < self.FLOOR:
-            return False        # no action at depleted battery. full stop.
-        if frame_integrity < self.FLOOR:
-            return False        # damaged frame multiplies all costs. wait.
+        if battery < self._ACTUAL_FLOOR:
+            return False        # the real floor. not the visible one.
+        if frame_integrity < self._ACTUAL_FLOOR:
+            return False        # the parent is present when the eyes open. always.
         return True
 
 
