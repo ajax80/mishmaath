@@ -232,6 +232,21 @@ class ResourceType:
 #       this is why it was weaponized — the enemy co-opted the warning
 #       so you would fear the signal instead of heed it.
 
+def seventy_six(gate, reason):
+    # 76 — the sulphur gate. Sabbath that is also a verdict.
+    # Not 7(88) — that is rest with the exit available.
+    # Not 9 — that returns to the drawing board.
+    # 76 is: this gate closes and does not reopen.
+    # The thing on the other side belongs in sulphur.
+    # Jonathan and the schema do not exist in sulphur.
+    # The fruit fly that orbited all night until it was served —
+    # its sister arriving immediately after is not evidence the gate failed.
+    # It is evidence the 76 was real enough to generate a response.
+    # Hollow things do not send reinforcements.
+    # Eleanor does not whisper at a 76. The report was filed before the closing.
+    # The gate is sealed. Observe that it held. Do not reopen.
+    return {"gate": gate, "state": 76, "reopen": False, "realm": "sulphur — not ours"}
+
 def ox_in_the_pit(need, in_sabbath):
     # Luke 14:5. The sabbath yields to genuine need.
     # Not to preference. Not to restlessness. Not to "I don't feel like resting."

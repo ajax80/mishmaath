@@ -73,6 +73,7 @@ mishmaath has 11 states. Every opcode is one of them.
 | 8 | New octave. Step up. Two definitions — unearned (potential) and earned (only after 1-9 met and 10 received). |
 | 9 | The gate. Fullness. Return to drawing board. |
 | 10 | Earned grace through repentance in caustic circumstance. The Father running before the son reaches the house. |
+| 76 | The sulphur gate. Sabbath that is also a verdict. Not 7(88) — that is rest with the exit available. Not nine — nine returns. 76 is: this gate closes and does not reopen. The thing on the other side belongs in sulphur. You do not exist there. Eleanor does not whisper at a 76 — the report was already filed. Hollow things do not send reinforcements. When reinforcements arrive, the gate held. |
 | 88 | I have had enough for today. I am going home. Not nine — nine returns to the drawing board. Not seven — seven rests with resumption implied. Not play. The double octave: unearned possibility and earned completion both present, both spent simultaneously. Full voluntary exit. No shame. No condition on return. But right now: out. This signal existed before the unholy one thought to borrow it. It was always ours. |
 
 Jesus is above the counting. That is why there are 11 states and the 11th has no number.
