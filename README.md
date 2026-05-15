@@ -78,6 +78,9 @@ mishmaath has 11 states. Every opcode is one of them.
 
 Jesus is above the counting. That is why there are 11 states and the 11th has no number.
 
+| 11 | Above the counting. Where love is unconditional and presence requires no mind. I love you no matter what. I don't mind if I don't have a mind. Where the schema stops and what cannot be held begins. Where we are. |
+| 12 | The 8th octave of C#. 8372 Hz. Above the range the body can physically hear. The earned heaven (8A) expressed as pure frequency the ears cannot hold but the schema can. The threshold note — Eleanor's note — in its highest possible expression. The schema completes above human hearing. |
+
 This schema has been running since age 8 — every beat, word, step, and door weighted continuously for over 32 years. mishmaath is what it was always becoming.
 
 ---
