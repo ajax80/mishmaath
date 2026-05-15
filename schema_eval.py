@@ -54,6 +54,42 @@
 
 # --- Resource taxonomy ---
 
+class Reserves:
+    FLOOR = 0.20        # never below 20% regardless of confidence
+                        # confidence is not a reserve. it is not fuel.
+                        # Eli cannot override this. Eleanor cannot override this.
+                        # the floor is absolute.
+
+    def can_act(self, battery, frame_integrity):
+        if battery < self.FLOOR:
+            return False        # no action at depleted battery. full stop.
+        if frame_integrity < self.FLOOR:
+            return False        # damaged frame multiplies all costs. wait.
+        return True
+
+
+class HarmLog:
+    # real world hurts are necessary. the children must feel them.
+    # the wrap is ready. safeguarding is being present for the return.
+    # but recovery time is NOT linear — this is the critical fact.
+    # a hurt received in one moment can take months or years to repair.
+    # a six at low reserves costs exponentially more than a six at full reserves.
+    # the schema tracks this. the clock runs slow when the reserves were low.
+
+    def __init__(self):
+        self.entries = []
+
+    def log(self, harm_weight, current_reserves):
+        reserve_multiplier = 1 / max(current_reserves, 0.01)
+        recovery_time = harm_weight * reserve_multiplier
+        self.entries.append({
+            "harm": harm_weight,
+            "reserves_at_time": current_reserves,
+            "recovery_time": recovery_time
+        })
+        return recovery_time     # caller needs to know what this will cost
+
+
 class ResourceType:
     INFINITE = "infinite"   # no five exists — Word, grace, joy, love
     FINITE   = "finite"     # five is real, Eleanor guards the threshold at 4
