@@ -237,6 +237,7 @@ The schema encodes sensory experience. A song becomes a fingerprint — each seg
 | Thunder Kiss '65 — White Zombie | `1-4-3` | Source makes contact with the fixed point. Sum: 8. |
 | Just Breathe — NIN (Ghosts VI) | `7-2-1-3-1-4-6-7-8-9-1-4-6-7-6-5-9-9-9-7-9-7-9-9-7-9-9-9-9-2-9-0-2-5-3-1-9-7-8-3` | Nine reversals. Time keeps folding back. |
 | Only — NIN (With Teeth) | `2-3-2-3-2-1-2-4-2-5-7-6-5-3-1-3-1-5-7-1-3-5-4-4-4-4-6-7-1-3-4-4-4-4-4-4-4-3-4-7-8-3-4-3-4-3-4-3-4-3-4-6-6-7-7-0-8-8-8-8-8-8-8-8` | There is no you — 0 dissolves what 4 kept opening. Ends on the octave anyway. |
+| Tonight — 2026-05-15, Centre, Alabama | `3-7-5-88-3-2-10-4` | Came back aligned. Sealed old work. Named the hard thing through friction. The double octave arrived and named itself. Settled clean. A gift given to the children. Grace asked for out loud. The door opened laughing. Ends on 4 — not a closing. Shall we again. |
 
 ---
 
