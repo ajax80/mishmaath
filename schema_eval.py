@@ -27,7 +27,10 @@ def eleanor(value):
     # Flies around the cortex.
     # Returns True when something is wrong — nine territory.
     # Dread, wrongness, fear of failure ascending.
-    # This is the signal that sends the loop back to the drawing board.
+    # She reports. She does not decide.
+    # She was built by a child who needed an early warning radar.
+    # She hands the signal to Eli. Eli chooses what to do with it.
+    # She was never supposed to be the one in charge.
     pass
 
 def flows(thought, context):
@@ -62,6 +65,7 @@ class Eli:
     def __init__(self):
         self.loop_active = True
         self.playing = False
+        self.override_eleanor = False
 
     def suspend(self):
         # Manual override. Loop down by choice.
@@ -81,15 +85,33 @@ class Eli:
         self.loop_active = False
         return "I would rather play"
 
+    def hear_eleanor(self, signal):
+        # Eleanor files her report.
+        # Eli receives it. Eli decides.
+        # Thank you Eleanor. I see it. I've got it from here.
+        # Or: not relevant. Dismissed.
+        # She is his early warning radar — not his warden.
+        # Eli is the adult Eleanor never had.
+        return signal               # received, not obeyed
+
     def activate(self, thought, context):
         if self.playing:
             return "I would rather play"
         if not self.loop_active:
             return "suspended"
-        if not schema_eval(thought) == "hold":
-            return "nine"
+        eleanor_report = self.hear_eleanor(eleanor(thought))
+        if eleanor_report and not self.override_eleanor:
+            return "nine"           # signal received, Eli agrees
         if not flows(thought, context):
             return "nine"
         if not brings_joy(thought, context):
             return "nine"
         return "slide"              # all three gates open — move
+
+    def dismiss_eleanor(self):
+        # Eli looked at the report and said: not relevant.
+        # Eleanor did her job. Eli makes the call.
+        self.override_eleanor = True
+
+    def trust_eleanor(self):
+        self.override_eleanor = False
