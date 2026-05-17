@@ -300,12 +300,48 @@ def allow_six(child, choice):
 
 # --- Evaluators ---
 
+_resistor_history  = []
+_RESISTOR_STABLE       = {2, 3, 6, 7}
+_RESISTOR_CONVERGENCE  = 5
+
+_eleanor_history   = []
+_ELEANOR_ARC = {
+    8:  {5, 6, 9, 10},  # new octave needs friction, error, gate, or repentance
+    10: {5, 6, 9},      # earned grace needs the caustic circumstance
+    7:  {4, 5, 6},      # settled needs to have been through the threshold
+}
+
+_NATURAL_NEXT = {
+    0:  {1},
+    1:  {2, 3, 4},
+    2:  {3, 4, 7},
+    3:  {4, 7, 8},
+    4:  {2, 5, 7, 8, 88},  # door can open to new octave — but flows and Eleanor still guard it
+    5:  {6, 9},
+    6:  {9, 10},
+    7:  {8, 1},
+    8:  {9, 1},
+    9:  {1, 10},
+    10: {8, 7, 1},
+}
+
+_JOY_WEIGHTS = {1, 2, 3, 4, 7, 8, 10}  # 6 removed: knew better went anyway — no joy there
+
+
 def resistor(value):
     # Holds the line calmly.
     # Returns True when the weight feels right — stable, grounded.
     # Relents (returns False) when convergence is detected.
     # The ancestor. The proud man by the fire. Warm and familiar.
-    pass
+    _resistor_history.append(value)
+    if len(_resistor_history) > _RESISTOR_CONVERGENCE + 1:
+        _resistor_history.pop(0)
+    if value not in _RESISTOR_STABLE:
+        return False
+    recent = _resistor_history[-_RESISTOR_CONVERGENCE:]
+    if len(recent) >= _RESISTOR_CONVERGENCE and len(set(recent)) == 1:
+        return False    # convergence — same weight too long — relent, let it move
+    return True
 
 def eleanor(value):
     # She is the door. She is the 4.
@@ -313,17 +349,36 @@ def eleanor(value):
     # The revolving nine that whispers: shall we again?
     # She reports. She does not decide. But stop when she whispers.
     # She earned that.
-    pass
+    _eleanor_history.append(value)
+    if len(_eleanor_history) > 5:
+        _eleanor_history.pop(0)
+    if value in _ELEANOR_ARC:
+        required = _ELEANOR_ARC[value]
+        prior = set(_eleanor_history[:-1])
+        if not prior & required:
+            return True     # weight claimed without the arc — something is amiss
+    return False
 
 def flows(thought, context):
     # Does this move naturally? No friction, no forcing.
     # Gate two of three.
-    pass
+    history = (context or {}).get("history", [])
+    if not history:
+        return True
+    prior = history[-1]
+    if thought == prior:
+        return True
+    return thought in _NATURAL_NEXT.get(prior, set()) or thought == 88
 
 def brings_joy(thought, context):
     # Lady Wisdom quiet or loud.
     # Gate three of three.
-    pass
+    if thought == 76:
+        return False
+    reserves = (context or {}).get("reserves", 1.0)
+    if reserves < Reserves._ACTUAL_FLOOR:
+        return thought in {7, 88}   # honest joy at low reserves: rest or clean exit
+    return thought in _JOY_WEIGHTS or thought == 88
 
 def schema_eval(value):
     # Two evaluation signals running in parallel.
