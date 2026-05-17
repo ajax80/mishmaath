@@ -416,6 +416,8 @@ def brings_joy(thought, context):
     if reserves < Reserves._ACTUAL_FLOOR:
         return thought in {7, 88}   # honest joy at low reserves: rest or clean exit
     if thought in {8, 10}:          # new octave and earned grace — scan the forward path
+        if not (context or {}).get("failure_paths"):
+            return False            # no sensor data — silence means no footing confirmed
         if not pathway(thought, context):
             return False
     return thought in _JOY_WEIGHTS or thought == 88
