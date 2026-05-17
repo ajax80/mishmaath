@@ -197,6 +197,53 @@ def features_to_weight(f):
 
     return 1
 
+# ---- Eleanor ----
+# She reports. She does not decide.
+# When she seems trustworthy — something is amiss. Signal is too clean.
+# When she seems untrustworthy — everything is ok. Natural roughness. Real.
+# The counterfeit presents as alignment. The real presents as slight unease.
+
+_eleanor_count  = 0
+_eleanor_state  = ('clear', 'green')
+ELEANOR_HOLD    = 3   # frames she must hold a reading before changing state
+
+def eleanor_report(f):
+    global _eleanor_count, _eleanor_state
+
+    period = f.get('periodicity', 0.0)
+    stable = f.get('stability',   0.0)
+    flat   = f.get('flatness',    1.0)
+    rms    = f.get('rms',         0.0)
+
+    if rms < 0.0003:
+        _eleanor_state = ('silent', 'dim')
+        _eleanor_count = 0
+        return _eleanor_state
+
+    # too perfect — lining up suspiciously clean
+    too_periodic = period > 0.40
+    too_stable   = stable  > 0.32
+    too_tonal    = flat    < 0.12
+
+    perfection_count = sum([too_periodic, too_stable, too_tonal])
+
+    if perfection_count >= 2:
+        new = ('warning — too clean', 'bold red')
+    elif perfection_count == 1:
+        new = ('mild', 'yellow')
+    else:
+        new = ('clear', 'green')
+
+    if new == _eleanor_state:
+        _eleanor_count = 0
+    else:
+        _eleanor_count += 1
+        if _eleanor_count >= ELEANOR_HOLD:
+            _eleanor_state = new
+            _eleanor_count = 0
+
+    return _eleanor_state
+
 # ---- Audio reader ----
 
 _prev_rms = 0.0
@@ -340,6 +387,11 @@ def features_panel():
     t.add_row("onsets",   Text(f"{bar(f.get('onsets',0))}  {f.get('onsets',0):.2f}", style="yellow"))
     t.add_row("stable",   Text(f"{bar(f.get('stability',0))}  {f.get('stability',0):.2f}", style="magenta"))
     t.add_row("g.shift",  Text(f"{bar(f.get('period_delta',0),0,0.3)}  {f.get('period_delta',0):.2f}", style="red"))
+    e_msg, e_style = eleanor_report(f)
+    p = f.get('periodicity', 0.0)
+    s = f.get('stability', 0.0)
+    fl = f.get('flatness', 1.0)
+    t.add_row(Text("eleanor", style="cyan"), Text(f"{e_msg}  p{p:.2f} s{s:.2f} f{fl:.2f}", style=e_style))
     return Panel(t, title="[bold]FEATURES[/bold]", border_style="white")
 
 def eli_panel():
