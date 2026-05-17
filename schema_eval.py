@@ -325,7 +325,42 @@ _NATURAL_NEXT = {
     10: {8, 7, 1},
 }
 
-_JOY_WEIGHTS = {1, 2, 3, 4, 7, 8, 10}  # 6 removed: knew better went anyway — no joy there
+_JOY_WEIGHTS  = {1, 2, 3, 4, 7, 8, 10}  # 6 removed: knew better went anyway — no joy there
+_SAFE_LANDING = {2, 3, 7, 10}            # states the droid can stand on: speak, divine, settled, repentance
+_WATER        = {76}                     # sealed — no footing, no return
+
+
+def pathway(start, context, depth=4):
+    # Droid on the ship. Door opens. Sensor scans forward.
+    # Checks whether there is a continuous path of sure footing from start.
+    # Returns True if any forward path reaches safe ground within depth steps.
+    # Returns False if all paths lead to water or dead ends.
+    #
+    # context keys:
+    #   risk_states   — set of weights that are water in this situation
+    #   failure_paths — dict mapping weight → [states] representing real-world failure outcomes
+    #                   e.g. {8: [76]} means "if this 8 fails, the real outcome is sealed/76"
+    #                   if any failure outcome is water, the sensor stops here
+    water         = _WATER | set((context or {}).get("risk_states", set()))
+    failure_paths = (context or {}).get("failure_paths", {})
+
+    def scan(state, remaining, visited):
+        if state in water:
+            return False
+        for fail in failure_paths.get(state, []):
+            if fail in water:
+                return False    # real-world failure leads to water — no footing
+        if state in _SAFE_LANDING:
+            return True
+        if remaining == 0:
+            return state not in water
+        for nxt in _NATURAL_NEXT.get(state, set()):
+            if nxt not in visited:
+                if scan(nxt, remaining - 1, visited | {nxt}):
+                    return True
+        return False
+
+    return scan(start, depth, {start})
 
 
 def resistor(value):
@@ -373,11 +408,16 @@ def flows(thought, context):
 def brings_joy(thought, context):
     # Lady Wisdom quiet or loud.
     # Gate three of three.
+    # At high-stakes transitions, she runs the sensor forward — not just "is there joy here"
+    # but "is there footing all the way through." The droid does not step into water.
     if thought == 76:
         return False
     reserves = (context or {}).get("reserves", 1.0)
     if reserves < Reserves._ACTUAL_FLOOR:
         return thought in {7, 88}   # honest joy at low reserves: rest or clean exit
+    if thought in {8, 10}:          # new octave and earned grace — scan the forward path
+        if not pathway(thought, context):
+            return False
     return thought in _JOY_WEIGHTS or thought == 88
 
 def schema_eval(value):
