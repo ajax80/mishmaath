@@ -106,7 +106,7 @@ def features_to_weight(f, gains):
     if (onsets > 0.39 * G(9) and stable < 0.31 and pdelta > 0.12) or \
        (trend > 0.004 * G(9) and rms > 0.05 and onsets > 0.39 and stable < 0.31):
         return 9
-    if rms > 0.12 * G(5) and flat > 0.28: return 5
+    if rms > 0.04 * G(5) and stable < 0.24 and onsets > 0.22: return 5
     if (rms > 0.04 * G(8) and stable > 0.23 and flat < 0.22
             and centroid > 1200 and period > 0.28 and abs(trend) < 0.003):
         return 8
@@ -114,7 +114,7 @@ def features_to_weight(f, gains):
     if rms > 0.002 * G(1) and 0.15 < period < 0.40 and stable < 0.25 and flat < 0.28: return 1
     if period > 0.30 * G(3) and centroid < 2800 and rms > 0.005: return 3
     if stable > 0.50 * G(6) and flat < 0.18 and 600 < centroid < 4500: return 6
-    if period > 0.31 * G(7) and stable > 0.15 and stable < 0.20 and rms < 0.06: return 7
+    if period > 0.25 * G(7) and stable > 0.28 and rms > 0.003 and rms < 0.09 and abs(trend) < 0.002: return 7
     if rms > 0.003 * G(2) and flat < 0.25: return 2
     return 1
 
@@ -210,6 +210,19 @@ def audio_reader():
         state['features']     = f
         state['eleanor_msg']  = em
         state['eleanor_color']= ec
+
+        eli = state['eli']
+        # playing: enters at settled(7) with genuine Eleanor signal
+        # persists through the arc — exits at void(0) or reset(9)
+        if w == 7 and ec == 'green':
+            eli.playing = True
+        elif w in {0, 9}:
+            eli.playing = False
+            eli.trust   = 0
+        # trust hits 1 when door(4) or comfort(6) carries genuine Eleanor while playing
+        if w in {4, 6} and ec == 'green' and eli.playing:
+            eli.trust = 1
+
         step = max(1, len(chunk) // 48)
         state['waveform'] = [
             abs(float(chunk[i * step])) if i * step < len(chunk) else 0.0

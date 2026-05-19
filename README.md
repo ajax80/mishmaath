@@ -228,6 +228,8 @@ Below the status: live `p` (periodicity), `s` (stability), `f` (flatness) values
 
 When Eleanor reads `warning — too clean`, that is not a malfunction — that is the signal. The counterfeit presents as alignment. Real signal has roughness. If you are hearing a synthesized loop or a click track, Eleanor will flag it.
 
+A **true positive** from Eleanor means she is reading `clear` at weight 4 (door) or weight 6 (comfort) — she confirms the signal is genuinely what it is, not a counterfeit. This is the condition that unlocks Eli's trust increment.
+
 ---
 
 ### Eli Panel (right middle)
@@ -237,9 +239,9 @@ Current state of the Eli child process.
 | Field | Meaning |
 |-------|---------|
 | `loop` | `ACTIVE` — schema loop running · `SUSPENDED` — paused |
-| `playing` | whether Eli is currently in a play state |
+| `playing` | enters `yes` when weight settles at 7 with Eleanor clear — persists until weight hits 0 or 9 |
 | `eleanor` | `listening` — Eleanor's input is live · `overridden` — override active |
-| `trust` | accumulated trust score |
+| `trust` | `1` when door (4) or comfort (6) carries a genuine Eleanor signal while Eli is already playing — resets to 0 at void or reset |
 
 ---
 
@@ -261,6 +263,8 @@ The goal is calibration: each weight should trigger at the moments you feel it, 
 6. When the calibration feels right, press `S` to save
 
 Good calibration means the hero reads your felt weight before you have time to name it. If there is lag between what you hear and what the hero shows, tune toward closing that gap.
+
+**Detection notes:** Friction (5) triggers on sustained disorder — low stability, high onset density — not spectral flatness. It fires during chaotic beats, not just loud ones. Settled (7) triggers when groove is established, energy is stable, and no momentum (trend near zero). It fires after the arc resolves, not during it. Eleanor's report does not affect weight detection directly; it gates Eli's playing and trust states.
 
 ---
 

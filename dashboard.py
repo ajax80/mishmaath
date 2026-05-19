@@ -160,8 +160,9 @@ def features_to_weight(f):
        (trend > 0.004 * G(9) and rms > 0.05 and onsets > 0.39 and stable < 0.31):
         return 9
 
-    # 5 — friction: loud AND spectrally noisy (chaos, not just volume)
-    if rms > 0.12 * G(5) and flat > 0.28:
+    # 5 — friction: chaotic beat. sustained disorder — many attacks, signal not settling.
+    # flat > 0.28 was wrong: real music stays tonal even in chaos. use stability + onsets instead.
+    if rms > 0.04 * G(5) and stable < 0.24 and onsets > 0.22:
         return 5
 
     # 8 — new octave: energy HAS arrived at an elevated level, tonal, groove present
@@ -187,8 +188,9 @@ def features_to_weight(f):
     if stable > 0.50 * G(6) and flat < 0.18 and 600 < centroid < 4500:
         return 6
 
-    # 7 — settled: gate closed. rhythm still echoing but at rest.
-    if period > 0.31 * G(7) and stable > 0.15 and stable < 0.20 and rms < 0.06:
+    # 7 — settled: groove known, energy stable and not building. gate closed.
+    # stable < 0.20 upper bound was the killer — that window almost never occurs. removed.
+    if period > 0.25 * G(7) and stable > 0.28 and rms > 0.003 and rms < 0.09 and abs(trend) < 0.002:
         return 7
 
     # 2 — speak: calm, tonal, moderate presence
