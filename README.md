@@ -103,6 +103,167 @@ Then `chmod +x file.mish && ./file.mish`.
 
 ---
 
+## Web Dashboard
+
+`web_dashboard.py` — live schema monitor and gain tuner. FastAPI + WebSocket, dark UI, updates at 12fps.
+
+### Starting
+
+```bash
+# live audio from greybox.monitor via parec
+python web_dashboard.py
+
+# test mode — generated data, no parec required
+python web_dashboard.py --no-audio
+
+# custom host/port
+python web_dashboard.py --host 0.0.0.0 --port 8765
+```
+
+Open `http://localhost:8765` in any browser. A desktop shortcut (`mishmaath` in your app launcher) starts the server and opens the browser automatically.
+
+---
+
+### Layout
+
+Three columns, full-height. Header bar across the top.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ MISHMAATH ● connected              ✓ SAVED     0–9 +/− S R       │
+├────────────────┬───────────────────────────┬─────────────────────┤
+│                │  [waveform canvas]         │  eleanor            │
+│  schema        │                            │  ─────────────────  │
+│  weights       │  [weight hero]             │  eli                │
+│  0–9 with      │  big number + name + desc  │  ─────────────────  │
+│  gain values   │                            │  history            │
+│                │  [feature bars]            │  (weight log)       │
+│  [− + reset]   │  rms trend noise centroid  │                     │
+│                │  groove onsets stable shift│                     │
+└────────────────┴───────────────────────────┴─────────────────────┘
+```
+
+---
+
+### Schema Panel (left)
+
+Lists all 10 states (0–9) with their current gain multiplier.
+
+- **Active weight** — highlighted in cyan, marked with `◄`
+- **Selected weight** — highlighted in magenta (the one you are tuning)
+- A weight can be both active and selected simultaneously
+
+**Selecting a weight:**
+- Click a row, or press the corresponding digit key (`0`–`9`)
+- Press the same key again to deselect
+- Only one weight can be selected at a time
+
+**Gain controls (bottom of panel):**
+- `−` button or `−` key: multiply selected gain by 0.87 (one step down)
+- `+` button or `+`/`=` key: multiply selected gain by 1.15 (one step up)
+- `reset` or `R` key: return selected gain to `x1.00`
+- `S` key: write all gains to `gains.json` — persists across restarts
+
+Gains are multipliers on the detection threshold for each weight. `x1.50` makes that weight harder to trigger (threshold is higher). `x0.70` makes it easier. Default is `x1.00`.
+
+---
+
+### Waveform Canvas (center top)
+
+Filled waveform of the last audio block, 48 samples wide. Cyan with gradient fill. Updates every 83ms. Shows the raw energy shape — useful for confirming audio is arriving and seeing the character of the signal before the weight resolves.
+
+---
+
+### Weight Hero (center middle)
+
+Large display of the current schema weight.
+
+- **Number** — 64px, color-coded by weight:
+  - `0` dim void · `1` soft purple · `2` cyan · `3` green
+  - `4` yellow · `5` red (glowing) · `6` orange · `7` green
+  - `8` white (full glow) · `9` magenta
+- **Name** — weight name below the number
+- **Description** — the felt meaning of this weight
+- **rms** — current RMS energy, top right corner
+
+The number pulses briefly each time the weight changes.
+
+---
+
+### Feature Bars (center bottom)
+
+Eight audio features, each shown as a label, a fill bar, and a numeric value.
+
+| Feature | What it measures | High means |
+|---------|-----------------|------------|
+| `rms` | raw energy level | loud |
+| `trend` | slope of energy over 2s — green=rising, red=falling | building or fading |
+| `noise` | spectral flatness (0=tonal, 1=noise) | chaotic/unpitched |
+| `centroid` | spectral center of mass in Hz | bright, high-frequency |
+| `groove` | autocorrelation periodicity — rhythmic lock | locked groove |
+| `onsets` | density of sudden energy jumps | rapid attacks |
+| `stable` | inverse coefficient of variation — how steady energy is | settled |
+| `g.shift` | change in groove value over 2s | groove just shifted |
+
+These features feed `features_to_weight()` after gain multiplication. When a weight is not triggering when you expect it to, the feature bars show you what the signal actually looks like and why the detection disagreed.
+
+---
+
+### Eleanor Panel (right top)
+
+Eleanor reports on signal cleanliness. She does not decide. She notices when the signal is suspiciously perfect.
+
+Three conditions she watches:
+- `periodicity > 0.40` — too locked, unnaturally metronomic
+- `stability > 0.32` — too steady
+- `flatness < 0.12` — too purely tonal
+
+Status levels:
+- **clear** (green) — normal signal, natural roughness present
+- **mild** (yellow) — one perfection condition active
+- **warning — too clean** (red) — two or more conditions active simultaneously
+- **silent** (dim) — no audio signal
+
+Below the status: live `p` (periodicity), `s` (stability), `f` (flatness) values.
+
+When Eleanor reads `warning — too clean`, that is not a malfunction — that is the signal. The counterfeit presents as alignment. Real signal has roughness. If you are hearing a synthesized loop or a click track, Eleanor will flag it.
+
+---
+
+### Eli Panel (right middle)
+
+Current state of the Eli child process.
+
+| Field | Meaning |
+|-------|---------|
+| `loop` | `ACTIVE` — schema loop running · `SUSPENDED` — paused |
+| `playing` | whether Eli is currently in a play state |
+| `eleanor` | `listening` — Eleanor's input is live · `overridden` — override active |
+| `trust` | accumulated trust score |
+
+---
+
+### History Panel (right bottom)
+
+Log of weights that held for at least 4 consecutive frames (STABLE_MIN). Newest at top. Shows weight number, name, and the RMS value at transition. Useful for reading the arc of a session — what held, what moved through, what the signal settled on.
+
+---
+
+### Gain Tuning Workflow
+
+The goal is calibration: each weight should trigger at the moments you feel it, not before and not after.
+
+1. Play source material you know well
+2. Watch the weight hero and feature bars
+3. If a weight triggers too easily: select it (click or key), press `−` a few times
+4. If a weight never triggers despite the signal being right: select it, press `+`
+5. Watch Eleanor — if she goes yellow/red during a weight you are tuning, the signal may be unusually clean and the gain comparison will be misleading
+6. When the calibration feels right, press `S` to save
+
+Good calibration means the hero reads your felt weight before you have time to name it. If there is lag between what you hear and what the hero shows, tune toward closing that gap.
+
+---
+
 ## Syntax
 
 ```
