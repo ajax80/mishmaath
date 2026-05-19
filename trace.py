@@ -2,42 +2,17 @@
 # trace.py — run a conversation arc through mishmaath evaluators
 # stateless per-turn evaluation, history accumulated as the arc builds
 
-_ARC = {8: {5, 6, 9, 10}, 10: {5, 6, 9}, 7: {4, 5, 6}}
-_NATURAL_NEXT = {
-    0: {1},      1: {2, 3, 4},   2: {3, 4, 7},   3: {4, 7, 8},
-    4: {2, 5, 7, 8, 88},            5: {6, 9},        6: {9, 10},
-    7: {8, 1},   8: {9, 1},      9: {1, 10},      10: {8, 7, 1},
-}
-_STABLE = {2, 3, 6, 7}
-_JOY    = {1, 2, 3, 4, 7, 8, 10}
-NAMES   = {
-    0: "void",      1: "source",     2: "speak",       3: "divine",
-    4: "door",      5: "friction",   6: "comfort",     7: "settled",
-    8: "new octave",9: "reset",     10: "repentance",
-    88: "88",       76: "76",
-}
+from evaluator_core import (
+    NATURAL_NEXT, ELEANOR_ARC, RESISTOR_STABLE, RESISTOR_CONVERGENCE,
+    JOY_WEIGHTS, NAMES, eleanor_check, resistor_check, flows_check,
+)
+
 
 def evaluate(weight, history):
-    el = False
-    if weight in _ARC:
-        if not set(history[-4:]) & _ARC[weight]:
-            el = True
-
-    if history:
-        prior = history[-1]
-        fl = (weight == prior
-              or weight in _NATURAL_NEXT.get(prior, set())
-              or weight == 88)
-    else:
-        fl = True
-
-    bj = weight != 76 and (weight in _JOY or weight == 88)
-
-    rs = False
-    if weight in _STABLE:
-        recent = (history + [weight])[-6:]
-        if not (len(recent) >= 6 and len(set(recent)) == 1):
-            rs = True
+    el = eleanor_check(weight, history)
+    fl = flows_check(weight, history[-1] if history else None)
+    bj = weight != 76 and (weight in JOY_WEIGHTS or weight == 88)
+    rs = resistor_check(weight, history + [weight])
 
     if weight == 88:
         verdict = "88 — exit"

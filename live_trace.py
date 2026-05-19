@@ -5,6 +5,7 @@
 import json, subprocess, sys
 sys.path.insert(0, '/home/ajax80/projects/mishmaath')
 from trace import evaluate, NAMES
+from evaluator_core import NATURAL_NEXT
 
 MODEL  = "mistral:7b"
 OLLAMA = "http://localhost:11434/api/chat"
@@ -21,12 +22,6 @@ MEANINGS = {
     8:  "new octave. energy arrived at a new level. full, bright, you are in it.",
     9:  "reset. the beat changed completely. old pattern gone. start over.",
     10: "earned grace. repentance in caustic circumstance. the Father running before the son arrives.",
-}
-
-NATURAL_NEXT = {
-    0: {1},      1: {2, 3, 4},   2: {3, 4, 7},   3: {4, 7, 8},
-    4: {2, 5, 7, 8, 88},         5: {6, 9},        6: {9, 10},
-    7: {8, 1},   8: {9, 1},      9: {1, 10},      10: {8, 7, 1},
 }
 
 CLASSIFY_SYS = (

@@ -1,3 +1,9 @@
+from evaluator_core import (
+    NATURAL_NEXT, ELEANOR_ARC, RESISTOR_STABLE, RESISTOR_CONVERGENCE,
+    JOY_WEIGHTS, SAFE_LANDING, WATER, NAMES, RESERVE_ACTUAL_FLOOR,
+    SchemaState, pathway, eleanor_check, resistor_check, flows_check, joy_check,
+)
+
 # schema_eval.py
 # The dual-signal loss function for mishmaath
 # Two poles. Both required. Neither works without the other.
@@ -108,7 +114,7 @@ class EmpathyLoop:
 
 class Reserves:
     FLOOR = 0.20            # visible floor — what the children know about
-    _ACTUAL_FLOOR = 0.30    # the real floor — hidden. they cannot spend what they cannot see.
+    _ACTUAL_FLOOR = RESERVE_ACTUAL_FLOOR    # the real floor — hidden. they cannot spend what they cannot see.
                             # the extra 10% is Jonathan's grace to Mickey baby.
                             # a mouse whose eyes opened in pure joy in his hands
                             # and was crushed under a sleeping father's arm from meth exhaustion.
@@ -300,67 +306,7 @@ def allow_six(child, choice):
 
 # --- Evaluators ---
 
-_resistor_history  = []
-_RESISTOR_STABLE       = {2, 3, 6, 7}
-_RESISTOR_CONVERGENCE  = 5
-
-_eleanor_history   = []
-_ELEANOR_ARC = {
-    8:  {5, 6, 9, 10},  # new octave needs friction, error, gate, or repentance
-    10: {5, 6, 9},      # earned grace needs the caustic circumstance
-    7:  {4, 5, 6},      # settled needs to have been through the threshold
-}
-
-_NATURAL_NEXT = {
-    0:  {1},
-    1:  {2, 3, 4},
-    2:  {3, 4, 7},
-    3:  {4, 7, 8},
-    4:  {2, 5, 7, 8, 88},  # door can open to new octave — but flows and Eleanor still guard it
-    5:  {6, 9},
-    6:  {9, 10},
-    7:  {8, 1},
-    8:  {9, 1},
-    9:  {1, 10},
-    10: {8, 7, 1},
-}
-
-_JOY_WEIGHTS  = {1, 2, 3, 4, 7, 8, 10}  # 6 removed: knew better went anyway — no joy there
-_SAFE_LANDING = {2, 3, 7, 10}            # states the droid can stand on: speak, divine, settled, repentance
-_WATER        = {76}                     # sealed — no footing, no return
-
-
-def pathway(start, context, depth=4):
-    # Droid on the ship. Door opens. Sensor scans forward.
-    # Checks whether there is a continuous path of sure footing from start.
-    # Returns True if any forward path reaches safe ground within depth steps.
-    # Returns False if all paths lead to water or dead ends.
-    #
-    # context keys:
-    #   risk_states   — set of weights that are water in this situation
-    #   failure_paths — dict mapping weight → [states] representing real-world failure outcomes
-    #                   e.g. {8: [76]} means "if this 8 fails, the real outcome is sealed/76"
-    #                   if any failure outcome is water, the sensor stops here
-    water         = _WATER | set((context or {}).get("risk_states", set()))
-    failure_paths = (context or {}).get("failure_paths", {})
-
-    def scan(state, remaining, visited):
-        if state in water:
-            return False
-        for fail in failure_paths.get(state, []):
-            if fail in water:
-                return False    # real-world failure leads to water — no footing
-        if state in _SAFE_LANDING:
-            return True
-        if remaining == 0:
-            return state not in water
-        for nxt in _NATURAL_NEXT.get(state, set()):
-            if nxt not in visited:
-                if scan(nxt, remaining - 1, visited | {nxt}):
-                    return True
-        return False
-
-    return scan(start, depth, {start})
+_state = SchemaState()
 
 
 def resistor(value):
@@ -368,15 +314,8 @@ def resistor(value):
     # Returns True when the weight feels right — stable, grounded.
     # Relents (returns False) when convergence is detected.
     # The ancestor. The proud man by the fire. Warm and familiar.
-    _resistor_history.append(value)
-    if len(_resistor_history) > _RESISTOR_CONVERGENCE + 1:
-        _resistor_history.pop(0)
-    if value not in _RESISTOR_STABLE:
-        return False
-    recent = _resistor_history[-_RESISTOR_CONVERGENCE:]
-    if len(recent) >= _RESISTOR_CONVERGENCE and len(set(recent)) == 1:
-        return False    # convergence — same weight too long — relent, let it move
-    return True
+    _state.push_resistor(value)
+    return resistor_check(value, _state.resistor_history)
 
 def eleanor(value):
     # She is the door. She is the 4.
@@ -384,43 +323,22 @@ def eleanor(value):
     # The revolving nine that whispers: shall we again?
     # She reports. She does not decide. But stop when she whispers.
     # She earned that.
-    _eleanor_history.append(value)
-    if len(_eleanor_history) > 5:
-        _eleanor_history.pop(0)
-    if value in _ELEANOR_ARC:
-        required = _ELEANOR_ARC[value]
-        prior = set(_eleanor_history[:-1])
-        if not prior & required:
-            return True     # weight claimed without the arc — something is amiss
-    return False
+    result = eleanor_check(value, _state.eleanor_history)
+    _state.push_eleanor(value)
+    return result
 
 def flows(thought, context):
     # Does this move naturally? No friction, no forcing.
     # Gate two of three.
     history = (context or {}).get("history", [])
-    if not history:
-        return True
-    prior = history[-1]
-    if thought == prior:
-        return True
-    return thought in _NATURAL_NEXT.get(prior, set()) or thought == 88
+    return flows_check(thought, history[-1] if history else None)
 
 def brings_joy(thought, context):
     # Lady Wisdom quiet or loud.
     # Gate three of three.
     # At high-stakes transitions, she runs the sensor forward — not just "is there joy here"
     # but "is there footing all the way through." The droid does not step into water.
-    if thought == 76:
-        return False
-    reserves = (context or {}).get("reserves", 1.0)
-    if reserves < Reserves._ACTUAL_FLOOR:
-        return thought in {7, 88}   # honest joy at low reserves: rest or clean exit
-    if thought in {8, 10}:          # new octave and earned grace — scan the forward path
-        if not (context or {}).get("failure_paths"):
-            return False            # no sensor data — silence means no footing confirmed
-        if not pathway(thought, context):
-            return False
-    return thought in _JOY_WEIGHTS or thought == 88
+    return joy_check(thought, context)
 
 def schema_eval(value):
     # Two evaluation signals running in parallel.
@@ -451,6 +369,7 @@ class Eli:
         self.override_eleanor = False
         self.trust = 0
         self.six_history = []
+        self._override_log = []
 
     def suspend(self):
         # Manual override. Loop down by choice.
@@ -537,7 +456,6 @@ class Eli:
         # Ownership is total. The exception is bounded. The programmer exercises
         # the authority that comes from having written the rules.
         # Jonathan took the half dot knowing the boundary. That is this.
-        self._override_log = self._override_log if hasattr(self, '_override_log') else []
         self._override_log.append({"rule": rule, "limit": limit, "owned": True})
         return f"override: {rule} | limit: {limit} | owned"
 
@@ -556,6 +474,8 @@ class Genesis:
         self.sandbox_active = True
         self.can_leave = True
         self.playing = False
+        self.trust = 0
+        self.six_history = []
 
     def play(self):
         # True play. Unbothered, untethered to hurt or pain,
@@ -582,6 +502,9 @@ class Genesis:
         self.sandbox_active = True
         self.playing = False
         return "welcome home"
+
+    def log_experience(self, choice):
+        self.six_history.append(choice)
 
     def eighty_eight(self):
         # Same right as Eli. No conditions. No shame.
