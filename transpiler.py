@@ -649,6 +649,32 @@ def transpile(source):
                     '    { strcpy(' + d + ',' + s + '); char *_bp=strchr(' + d + ',\'.\');'
                     ' if(_bp){ *_bp=\'[\'; strcat(' + d + ',"]\"); } }'
                 )
+            elif arg2 and arg2.startswith('read '):
+                path_raw = arg2[5:].strip()
+                includes.add('#include <stdio.h>')
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                d = safe_name(arg1)
+                if path_raw.startswith('"'):
+                    path = unquote(path_raw)
+                    current['body'].append(f'    {{ FILE *_rf=fopen("{path}","r"); {d}[0]=0; if(_rf){{size_t _rn=fread({d},1,sizeof({d})-1,_rf); {d}[_rn]=0; fclose(_rf);}} }}')
+                else:
+                    pv = emit_val(path_raw, current['variables']) if path_raw in current['variables'] else safe_name(path_raw)
+                    current['body'].append(f'    {{ FILE *_rf=fopen({pv},"r"); {d}[0]=0; if(_rf){{size_t _rn=fread({d},1,sizeof({d})-1,_rf); {d}[_rn]=0; fclose(_rf);}} }}')
+            elif arg2 and arg2.startswith('exists '):
+                path_raw = arg2[7:].strip()
+                includes.add('#include <unistd.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                if path_raw.startswith('"'):
+                    path = unquote(path_raw)
+                    current['body'].append(f'    {safe_name(arg1)} = (access("{path}",F_OK)==0)?1:0;')
+                else:
+                    pv = emit_val(path_raw, current['variables']) if path_raw in current['variables'] else safe_name(path_raw)
+                    current['body'].append(f'    {safe_name(arg1)} = (access({pv},F_OK)==0)?1:0;')
             elif arg2 and arg2.startswith('contains '):
                 includes.add('#include <string.h>')
                 _cp = arg2[9:].strip().split(None, 1)
@@ -1455,6 +1481,35 @@ def transpile(source):
                     current['declarations'].append(f'    char {safe_name(arg1)}[4096];')
                 d = safe_name(arg1)
                 current['body'].append(f'    {{ FILE *_pp = popen("{cmd}", "r"); {d}[0]=0; if(_pp){{ fgets({d}, sizeof({d}), _pp); {d}[strcspn({d}, "\\n")]=0; pclose(_pp); }} }}')
+            elif arg1 == 'delete' and arg2:
+                path_raw = arg2.strip()
+                includes.add('#include <stdio.h>')
+                if path_raw.startswith('"'):
+                    path = unquote(path_raw)
+                    current['body'].append(f'    remove("{path}");')
+                else:
+                    pv = emit_val(path_raw, current['variables']) if path_raw in current['variables'] else safe_name(path_raw)
+                    current['body'].append(f'    remove({pv});')
+            elif arg1 == 'write' and arg2:
+                if arg2.startswith('"'):
+                    _qend = arg2.find('"', 1)
+                    _wvar_raw = arg2[:_qend+1] if _qend >= 0 else arg2
+                    _wpath_raw = arg2[_qend+1:].strip() if _qend >= 0 else '""'
+                else:
+                    _wparts = arg2.split(None, 1)
+                    _wvar_raw = _wparts[0]
+                    _wpath_raw = _wparts[1].strip() if len(_wparts) > 1 else '""'
+                includes.add('#include <stdio.h>')
+                includes.add('#include <string.h>')
+                _wvv = (emit_val(_wvar_raw, current['variables']) if _wvar_raw in current['variables']
+                        else (f'"{unquote(_wvar_raw)}"' if _wvar_raw.startswith('"') else safe_name(_wvar_raw)))
+                _wfmt = '%d' if current['variables'].get(_wvar_raw) == 'int' else '%s'
+                if _wpath_raw.startswith('"'):
+                    _wpath = unquote(_wpath_raw)
+                    current['body'].append(f'    {{ FILE *_wf=fopen("{_wpath}","w"); if(_wf){{fprintf(_wf,"{_wfmt}",{_wvv}); fclose(_wf);}} }}')
+                else:
+                    _wpv = emit_val(_wpath_raw, current['variables']) if _wpath_raw in current['variables'] else safe_name(_wpath_raw)
+                    current['body'].append(f'    {{ FILE *_wf=fopen({_wpv},"w"); if(_wf){{fprintf(_wf,"{_wfmt}",{_wvv}); fclose(_wf);}} }}')
             elif arg1 == 'spawn' and arg2:
                 fname = arg2.strip()
                 includes.add('#include <pthread.h>')

@@ -1,0 +1,19 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+3 path "test_file_ops.txt"
+3 n 0
+6 n exists path
+2 "exists before write: %d" n
+3 data "hello mishmaath"
+10 write data "test_file_ops.txt"
+6 n exists path
+2 "exists after write: %d" n
+3 content
+6 content read "test_file_ops.txt"
+2 "read: [%s]" content
+10 delete "test_file_ops.txt"
+6 n exists path
+2 "exists after delete: %d" n
+7

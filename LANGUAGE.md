@@ -180,6 +180,10 @@ compound conditions:
 6 n ftoi f          # n = (int)f
 6 f itof n          # f = (double)n
 6 val db col N      # read column N from active sqlite3 query loop
+6 n exists "file.txt" # n = 1 if file exists, 0 otherwise
+6 n exists path       # path can be a variable
+6 s read "file.txt"   # read entire file into s
+6 s read path         # path can be a variable
 6 m match "pat" s   # m = 1 if s matches regex pattern, 0 if not
 6 c match_get "pat" s N  # c = capture group N from regex match (or "" if no match)
 6 n contains s "needle"  # n = 1 if s contains needle, 0 otherwise
@@ -266,6 +270,9 @@ compound conditions:
 **file**
 ```
 10 var "file.txt"     # append var to file
+10 write var "file.txt"  # overwrite file with var
+10 delete "file.txt"  # delete file
+10 delete path        # path can be a variable
 ```
 
 **database (sqlite3)**
