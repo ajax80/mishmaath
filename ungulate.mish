@@ -1,0 +1,42 @@
+#!/usr/bin/env mishmaath
+0
+
+1 ungulate #aim #gait
+3 leg_calc 0
+3 leg_calc aim
+8 leg_calc +gait
+8 leg_calc %9
+5 leg_calc != aim
+  2 "  gap: leg=%d aim=%d -- holding aim" leg_calc aim
+5
+7 aim
+
+1 main
+4 stdout
+10 rawmode on
+3 aim 1
+3 gait 0
+3 k 0
+3 angle 0
+
+2 "ungulate: armed"
+2 "[1-9] set aim   [space] fire   [q] quit"
+
+9 k != 113
+  6 k kbhit
+  5 k >= 49 and k <= 57
+    3 aim k
+    8 aim -48
+    2 "aim registered: %d" aim
+  5 else k == 32
+    2 "adrenaline"
+    3 angle ungulate aim gait
+    2 "fire: %d" angle
+  5
+  8 gait +1
+  8 gait %9
+  10 sleep 16
+9
+
+10 rawmode off
+7
