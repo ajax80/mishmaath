@@ -159,11 +159,11 @@
     <tr><td>3</td><td>let</td><td>declare or assign — int, float, string, array, 2D array</td></tr>
     <tr><td>4</td><td>channel</td><td>open I/O channel or call a function</td></tr>
     <tr><td>5</td><td>if</td><td>conditional — if / else if / else / end, compound and/or/not</td></tr>
-    <tr><td>6</td><td>compute</td><td>transform — strlen, sscanf, strip, json, atoi, sqrt, sin, cos, ftoa, ftoi...</td></tr>
+    <tr><td>6</td><td>compute</td><td>transform — strlen, sscanf, strip, json, atoi, sqrt, sin, cos, ftoa, ftoi, sqlite col...</td></tr>
     <tr><td>7</td><td>return</td><td>end function, optionally return a value</td></tr>
     <tr><td>8</td><td>mutate</td><td>in-place arithmetic or string append — += -= *= ++ strcat</td></tr>
     <tr><td>9</td><td>loop</td><td>for / while / stdin / file / accept — bare 9 closes the block</td></tr>
-    <tr><td>10</td><td>io</td><td>network, terminal, file, system — HTTP, TCP, sleep, rawmode...</td></tr>
+    <tr><td>10</td><td>io</td><td>network, terminal, file, system, database — HTTP, TCP, SQLite, sleep, rawmode...</td></tr>
   </table>
 </section>
 
@@ -234,6 +234,25 @@
 <span class="op">3</span> <span class="var">grid</span> 3 4 99 <span class="cmt"># grid[3][4] = 99</span>
 <span class="op">6</span> <span class="var">v</span> <span class="var">grid</span> 3 4  <span class="cmt"># v = grid[3][4]</span>
 <span class="op">2</span> <span class="str">"%d"</span> <span class="var">v</span>
+<span class="op">7</span></pre>
+    </div>
+
+    <div class="ex-card">
+      <div class="ex-label">sqlite3 database</div>
+      <pre><span class="cmt">#!/usr/bin/env mishmaath</span>
+<span class="str">#link sqlite3</span>
+<span class="op">0</span>
+<span class="op">1</span> <span class="var">main</span>
+<span class="op">4</span> stdout
+<span class="op">10</span> <span class="var">db</span> open <span class="str">"log.db"</span>
+<span class="op">10</span> <span class="var">db</span> exec <span class="str">"CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY, msg TEXT)"</span>
+<span class="op">10</span> <span class="var">db</span> exec <span class="str">"INSERT INTO log (msg) VALUES ('hello')"</span>
+<span class="op">9</span>  <span class="var">row</span> <span class="var">db</span> query <span class="str">"SELECT id, msg FROM log"</span>
+  <span class="op">6</span> <span class="var">id</span>  <span class="var">db</span> col 0
+  <span class="op">6</span> <span class="var">msg</span> <span class="var">db</span> col 1
+  <span class="op">2</span> <span class="str">"[%s] %s"</span> <span class="var">id</span> <span class="var">msg</span>
+<span class="op">9</span>
+<span class="op">10</span> <span class="var">db</span> close
 <span class="op">7</span></pre>
     </div>
 

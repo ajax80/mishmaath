@@ -178,6 +178,7 @@ compound conditions:
 6 s ftoa f          # s = "%g" formatted float
 6 n ftoi f          # n = (int)f
 6 f itof n          # f = (double)n
+6 val db col N      # read column N from active sqlite3 query loop
 ```
 
 ---
@@ -216,10 +217,11 @@ compound conditions:
 9 i 0 n               # for (i = 0; i < n; i++)
 9 x != 0              # while (x != 0)
 9 x < limit           # while (x < limit)
-9 client accept srv   # while ((client = accept(srv)) >= 0)
-9 break               # break
-9 continue            # continue
-9                     # end loop
+9 client accept srv        # while ((client = accept(srv)) >= 0)
+9 row db query "SELECT..." # sqlite3 query loop — row = tab-joined columns
+9 break                    # break
+9 continue                 # continue
+9                          # end loop
 ```
 
 ---
@@ -251,6 +253,25 @@ compound conditions:
 ```
 10 var "file.txt"     # append var to file
 ```
+
+**database (sqlite3)**
+```
+10 db open "data.db"  # open sqlite3 database file
+10 db exec "SQL"      # execute statement (CREATE, INSERT, UPDATE, DELETE)
+10 db exec sql        # execute from a string variable
+10 db close           # close database
+```
+
+query loop — use op 9 to iterate rows, op 6 to read columns:
+```
+9 row db query "SELECT id, name FROM things"
+  6 id   db col 0     # column 0 → id
+  6 name db col 1     # column 1 → name
+  2 "[%s] %s" id name
+9
+```
+
+requires `#link sqlite3` at the top of the file. install: `sudo dnf install sqlite-devel` (Fedora) or `sudo apt install libsqlite3-dev` (Debian/Ubuntu).
 
 ---
 
@@ -398,6 +419,27 @@ compound conditions:
   10 sleep 16
 9
 10 rawmode off
+7
+```
+
+### sqlite3 database
+
+```
+#!/usr/bin/env mishmaath
+#link sqlite3
+0
+1 main
+4 stdout
+10 db open "log.db"
+10 db exec "CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY, msg TEXT)"
+10 db exec "INSERT INTO log (msg) VALUES ('hello mishmaath')"
+10 db exec "INSERT INTO log (msg) VALUES ('sqlite is alive')"
+9 row db query "SELECT id, msg FROM log"
+  6 id  db col 0
+  6 msg db col 1
+  2 "[%s] %s" id msg
+9
+10 db close
 7
 ```
 
