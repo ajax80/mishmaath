@@ -286,6 +286,28 @@
     </div>
 
     <div class="ex-card">
+      <div class="ex-label">token stream processor</div>
+      <pre><span class="cmt">#!/usr/bin/env mishmaath</span>
+<span class="op">0</span>
+<span class="op">1</span> <span class="var">main</span>
+<span class="op">4</span> stdout
+<span class="op">3</span> <span class="var">line</span>
+<span class="op">9</span> <span class="var">line</span> stdin
+  <span class="op">6</span> <span class="var">line</span> strip <span class="var">line</span>
+  <span class="op">5</span> <span class="var">line</span> contains <span class="str">"let"</span> or <span class="var">line</span> contains <span class="str">"assign"</span>
+    <span class="op">2</span> <span class="str">"[3·declare]  %s"</span> <span class="var">line</span>
+  <span class="op">5</span> <span class="kw">else</span> <span class="var">line</span> contains <span class="str">"compute"</span> or <span class="var">line</span> contains <span class="str">"derive"</span>
+    <span class="op">2</span> <span class="str">"[6·compute]  %s"</span> <span class="var">line</span>
+  <span class="op">5</span> <span class="kw">else</span> <span class="var">line</span> contains <span class="str">"if "</span> or <span class="var">line</span> contains <span class="str">"when "</span>
+    <span class="op">2</span> <span class="str">"[5·branch]   %s"</span> <span class="var">line</span>
+  <span class="op">5</span> <span class="kw">else</span>
+    <span class="op">2</span> <span class="str">"[?·unmapped] %s"</span> <span class="var">line</span>
+  <span class="op">5</span>
+<span class="op">9</span>
+<span class="op">7</span></pre>
+    </div>
+
+    <div class="ex-card">
       <div class="ex-label">WebSocket client</div>
       <pre><span class="cmt">#!/usr/bin/env mishmaath</span>
 <span class="op">0</span>

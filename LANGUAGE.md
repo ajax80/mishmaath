@@ -500,6 +500,60 @@ no extra dependencies. the handshake and frame codec are compiled in. supports `
 7
 ```
 
+### token stream processor
+
+pipe any text through mishmaath's opcode frame. mapped lines declare their type. `[?·unmapped]` lines are the fuzzy seam made visible — sentences that don't know what they are.
+
+`6 first` and `6 skip` are the only split ops needed. the lane was already built.
+
+```
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+3 line
+3 word
+3 rest
+9 line stdin
+  6 line strip line
+  6 word first line
+  6 rest  skip  line
+  5 line contains "declare" or line contains "let" or line contains "assign"
+    2 "[3·declare]  %s" line
+  5 else line contains "print" or line contains "output" or line contains "say"
+    2 "[2·speak]    %s" line
+  5 else line contains "if " or line contains "when " or line contains "unless"
+    2 "[5·branch]   %s" line
+  5 else line contains "loop" or line contains "for each" or line contains "repeat"
+    2 "[9·loop]     %s" line
+  5 else line contains "return" or line contains "yields" or line contains "result is"
+    2 "[7·return]   %s" line
+  5 else line contains "compute" or line contains "calculate" or line contains "derive"
+    2 "[6·compute]  %s" line
+  5 else line contains "append" or line contains "increment" or line contains "mutate"
+    2 "[8·mutate]   %s" line
+  5 else line contains "call" or line contains "invoke" or line contains "open"
+    2 "[4·channel]  %s" line
+  5 else line contains "connect" or line contains "fetch" or line contains "write to"
+    2 "[10·io]      %s" line
+  5 else
+    2 "[?·unmapped] %s" line
+  5
+9
+7
+```
+
+run it:
+```sh
+echo "compute the sum of all inputs" | ./token_stream.mish
+# → [6·compute]  compute the sum of all inputs
+
+echo "philosophy encoded in a number" | ./token_stream.mish
+# → [?·unmapped] philosophy encoded in a number
+```
+
+the ratio of `[?·unmapped]` to mapped lines is real-time ambiguity measurement. the lines that resist the schema are the information.
+
 ---
 
 ## types
