@@ -90,6 +90,7 @@ def transpile(source):
     functions = []
     globals_ = []
     global_vars = {}
+    global_arrays2d = {}
     current = None
     entry = 'main'
 
@@ -105,7 +106,7 @@ def transpile(source):
         if current is not None:
             functions.append(current)
         entry = name
-        current = {'name': name, 'params': params or [], 'declarations': [], 'body': [], 'variables': dict(global_vars), 'loop_stack': [], 'return_type': 'int'}
+        current = {'name': name, 'params': params or [], 'declarations': [], 'body': [], 'variables': dict(global_vars), 'loop_stack': [], 'return_type': 'int', 'arrays2d': dict(global_arrays2d)}
         for ptype, pname in (params or []):
             current['variables'][pname] = ptype
 
@@ -207,7 +208,25 @@ def transpile(source):
                     global_vars[arg1] = 'str'
                     globals_.append(f'char {safe_name(arg1)}[256];')
                 continue
-            if arg1 and '[]' in arg1:
+            _p2d = arg2.split() if arg2 else []
+            _is2d = (len(_p2d) == 2 and arg1 not in current['variables']
+                     and all(p.lstrip('-').isdigit() for p in _p2d))
+            if arg1 and _is2d:
+                _cols, _rows = int(_p2d[0]), int(_p2d[1])
+                current['variables'][arg1] = 'int2d'
+                current['arrays2d'][arg1] = (_rows, _cols)
+                current['declarations'].append(f'    int {safe_name(arg1)}[{_rows}][{_cols}];')
+            elif arg1 and arg2 and arg1 in current['arrays2d']:
+                _wp = arg2.split(None, 2)
+                if len(_wp) == 3:
+                    _ri = emit_val(_wp[0], current['variables']) if _wp[0] in current['variables'] else _wp[0]
+                    _ci = emit_val(_wp[1], current['variables']) if _wp[1] in current['variables'] else _wp[1]
+                    _vu = unquote(_wp[2])
+                    _ve = emit_val(_wp[2], current['variables']) if _wp[2] in current['variables'] else (
+                        _vu if _vu.lstrip('-').isdigit() else f'"{_vu}"'
+                    )
+                    current['body'].append(f'    {safe_name(arg1)}[{_ri}][{_ci}] = {_ve};')
+            elif arg1 and '[]' in arg1:
                 base = arg1.replace('[]', '')
                 size = unquote(arg2) if arg2 else '10'
                 is_str = arg2 and arg2.startswith('"')
@@ -348,7 +367,15 @@ def transpile(source):
         elif op == 6:
             if current is None:
                 continue
-            if arg2 and arg2.startswith('len '):
+            _r6p = arg2.split() if arg2 else []
+            if len(_r6p) == 3 and _r6p[0] in current['arrays2d']:
+                _ri = emit_val(_r6p[1], current['variables']) if _r6p[1] in current['variables'] else _r6p[1]
+                _ci = emit_val(_r6p[2], current['variables']) if _r6p[2] in current['variables'] else _r6p[2]
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                current['body'].append(f'    {safe_name(arg1)} = {safe_name(_r6p[0])}[{_ri}][{_ci}];')
+            elif arg2 and arg2.startswith('len '):
                 src = arg2[4:].strip()
                 includes.add('#include <string.h>')
                 if arg1 in current['variables']:

@@ -1,8 +1,5 @@
 #!/usr/bin/env mishmaath
 0
-0 c #define W 10
-0 c #define H 20
-0 c static int board[H*W];
 0 c static int pieces[7][8] = {
 0 c     {0,1,1,2,10,11,11,12},
 0 c     {1,2,11,10,10,11,12,21},
@@ -12,55 +9,42 @@
 0 c     {0,1,2,10,10,11,12,2},
 0 c     {0,1,2,1,10,11,12,11},
 0 c };
-0 c static int fits(int *p, int ox, int oy){
+0 c static int piece[4];
+0 c static int W=10,H=20;
+0 c static int fits(int board[][10],int ox,int oy){
 0 c     int i; for(i=0;i<4;i++){
-0 c         int r=oy+p[i]/W, c=ox+p[i]%W;
-0 c         if(r<0||r>=H||c<0||c>=W) return 0;
-0 c         if(board[r*W+c]) return 0;
+0 c         int r=oy+piece[i]/10, c=ox+piece[i]%10;
+0 c         if(r<0||r>=20||c<0||c>=10) return 0;
+0 c         if(board[r][c]) return 0;
 0 c     } return 1;
 0 c }
-0 c static void lock(int *p, int ox, int oy){
+0 c static void lock(int board[][10],int ox,int oy){
 0 c     int i; for(i=0;i<4;i++){
-0 c         int r=oy+p[i]/W, c=ox+p[i]%W;
-0 c         board[r*W+c]=1;
+0 c         int r=oy+piece[i]/10, c=ox+piece[i]%10;
+0 c         board[r][c]=1;
 0 c     }
 0 c }
-0 c static int clear_lines(void){
-0 c     int r,c,full,dest=H-1,cleared=0;
-0 c     for(r=H-1;r>=0;r--){
-0 c         full=1; for(c=0;c<W;c++) if(!board[r*W+c]){full=0;break;}
-0 c         if(!full){ if(dest!=r){int k;for(k=0;k<W;k++)board[dest*W+k]=board[r*W+k];} dest--; }
+0 c static int clear_lines(int board[][10]){
+0 c     int r,c,full,dest=19,cleared=0;
+0 c     for(r=19;r>=0;r--){
+0 c         full=1; for(c=0;c<10;c++) if(!board[r][c]){full=0;break;}
+0 c         if(!full){ if(dest!=r){int k;for(k=0;k<10;k++)board[dest][k]=board[r][k];} dest--; }
 0 c         else cleared++;
 0 c     }
-0 c     for(r=dest;r>=0;r--) {int k;for(k=0;k<W;k++)board[r*W+k]=0;}
+0 c     for(r=dest;r>=0;r--){int k;for(k=0;k<10;k++)board[r][k]=0;}
 0 c     return cleared;
 0 c }
-0 c static void rotate(int *src, int *dst){
-0 c     int i;
+0 c static void rotate(int ox,int oy){
+0 c     int tmp[4],i;
 0 c     int minr=99,minc=99,maxr=0,maxc=0;
-0 c     for(i=0;i<4;i++){int r=src[i]/W,c=src[i]%W;if(r<minr)minr=r;if(r>maxr)maxr=r;if(c<minc)minc=c;if(c>maxc)maxc=c;}
+0 c     for(i=0;i<4;i++){int r=piece[i]/10,c=piece[i]%10;if(r<minr)minr=r;if(r>maxr)maxr=r;if(c<minc)minc=c;if(c>maxc)maxc=c;}
 0 c     int sz=(maxr-minr>maxc-minc)?maxr-minr+1:maxc-minc+1;
-0 c     for(i=0;i<4;i++){int r=src[i]/W-minr,c=src[i]%W-minc;dst[i]=(c)*W+(sz-1-r);}
-0 c }
-0 c static void draw(int *p, int ox, int oy, int score){
-0 c     int r,c,i;
-0 c     printf("\033[H");
-0 c     for(r=0;r<H;r++){
-0 c         printf("|");
-0 c         for(c=0;c<W;c++){
-0 c             int cell=board[r*W+c];
-0 c             if(!cell){ int pi; for(pi=0;pi<4;pi++){int pr=oy+p[pi]/W,pc=ox+p[pi]%W;if(pr==r&&pc==c){cell=2;break;}} }
-0 c             printf(cell==2?"\033[36m[]\033[0m":cell?"\033[33m##\033[0m":"  ");
-0 c         }
-0 c         printf("|\n");
-0 c     }
-0 c     printf("+--------------------+\n");
-0 c     printf("score: %d  (a=left d=right s=down w=rotate q=quit)\n", score);
+0 c     for(i=0;i<4;i++){int r=piece[i]/10-minr,c=piece[i]%10-minc;tmp[i]=(c)*10+(sz-1-r);}
+0 c     for(i=0;i<4;i++) piece[i]=tmp[i];
 0 c }
 1 main
 4 stdout
-10 clear
-10 rawmode on
+3 board 10 20
 3 px 3
 3 py 0
 3 pt 0
@@ -68,27 +52,45 @@
 3 k 0
 3 tick 0
 3 running 1
-0 c int piece[4]; int next[4]; int r2;
-0 c for(r2=0;r2<4;r2++) piece[r2]=pieces[pt][r2];
+3 row 0
+3 col 0
+3 cell 0
+0 c { int _i; for(_i=0;_i<4;_i++) piece[_i]=pieces[pt][_i]; }
+10 clear
+10 rawmode on
 9 running != 0
   6 k kbhit
   5 k == 113
     3 running 0
   5 else k == 97
-    0 c if(fits(piece,px-1,py)) px--;
+    0 c if(fits(board,px-1,py)) px--;
   5 else k == 100
-    0 c if(fits(piece,px+1,py)) px++;
+    0 c if(fits(board,px+1,py)) px++;
   5 else k == 115
-    0 c if(fits(piece,px,py+1)) py++; else { lock(piece,px,py); score+=clear_lines()*10; pt=(pt+1)%7; px=3; py=0; int ri; for(ri=0;ri<4;ri++) piece[ri]=pieces[pt][ri]; if(!fits(piece,px,py)) running=0; }
+    0 c if(fits(board,px,py+1)){ py++; } else { lock(board,px,py); score+=clear_lines(board)*10; pt=(pt+1)%7; px=3; py=0; int _i; for(_i=0;_i<4;_i++) piece[_i]=pieces[pt][_i]; if(!fits(board,px,py)) running=0; }
   5 else k == 119
-    0 c rotate(piece,next); if(fits(next,px,py)){int ri;for(ri=0;ri<4;ri++)piece[ri]=next[ri];}
+    0 c { int _ox=px,_oy=py; rotate(px,py); if(!fits(board,px,py)){int _i;for(_i=0;_i<4;_i++)piece[_i]=pieces[pt][_i];} }
   5
   8 tick +1
-  5 tick == 10
+  5 tick == 8
     3 tick 0
-    0 c if(fits(piece,px,py+1)){ py++; } else { lock(piece,px,py); score+=clear_lines()*10; pt=(pt+1)%7; px=3; py=0; int ri2; for(ri2=0;ri2<4;ri2++) piece[ri2]=pieces[pt][ri2]; if(!fits(piece,px,py)) running=0; }
+    0 c if(fits(board,px,py+1)){ py++; } else { lock(board,px,py); score+=clear_lines(board)*10; pt=(pt+1)%7; px=3; py=0; int _i2; for(_i2=0;_i2<4;_i2++) piece[_i2]=pieces[pt][_i2]; if(!fits(board,px,py)) running=0; }
   5
-  0 c draw(piece,px,py,score);
+  0 c printf("\033[H");
+  9 row 0 20
+    2 "|"
+    9 col 0 10
+      6 cell board row col
+      5 cell == 1
+        2 "##"
+      5 else
+        0 c { int _pi; int _ispc=0; for(_pi=0;_pi<4;_pi++){if((py+piece[_pi]/10)==row&&(px+piece[_pi]%10)==col){_ispc=1;break;}} if(_ispc) printf("\033[36m[]\033[0m"); else printf("  "); }
+      5
+    9
+    2 "|"
+  9
+  2 "+--------------------+"
+  2 "score: %d  wasd=move/rotate q=quit" score
   10 sleep 50
 9
 10 rawmode off
