@@ -156,10 +156,10 @@
     <tr><td>0</td><td>module</td><td>top-level setup, raw C passthrough via <code>0 c ...</code></td></tr>
     <tr><td>1</td><td>function</td><td>declare a function — <code>1 main</code>, <code>1 add #a #b</code></td></tr>
     <tr><td>2</td><td>print</td><td>output — literal, variable, or printf-style format string</td></tr>
-    <tr><td>3</td><td>let</td><td>declare or assign — int, string, array, 2D array</td></tr>
+    <tr><td>3</td><td>let</td><td>declare or assign — int, float, string, array, 2D array</td></tr>
     <tr><td>4</td><td>channel</td><td>open I/O channel or call a function</td></tr>
     <tr><td>5</td><td>if</td><td>conditional — if / else if / else / end, compound and/or/not</td></tr>
-    <tr><td>6</td><td>compute</td><td>transform — strlen, sscanf, strip, json, atoi, min, max, kbhit...</td></tr>
+    <tr><td>6</td><td>compute</td><td>transform — strlen, sscanf, strip, json, atoi, sqrt, sin, cos, ftoa, ftoi...</td></tr>
     <tr><td>7</td><td>return</td><td>end function, optionally return a value</td></tr>
     <tr><td>8</td><td>mutate</td><td>in-place arithmetic or string append — += -= *= ++ strcat</td></tr>
     <tr><td>9</td><td>loop</td><td>for / while / stdin / file / accept — bare 9 closes the block</td></tr>
@@ -234,6 +234,21 @@
 <span class="op">3</span> <span class="var">grid</span> 3 4 99 <span class="cmt"># grid[3][4] = 99</span>
 <span class="op">6</span> <span class="var">v</span> <span class="var">grid</span> 3 4  <span class="cmt"># v = grid[3][4]</span>
 <span class="op">2</span> <span class="str">"%d"</span> <span class="var">v</span>
+<span class="op">7</span></pre>
+    </div>
+
+    <div class="ex-card">
+      <div class="ex-label">float math</div>
+      <pre><span class="cmt">#!/usr/bin/env mishmaath</span>
+<span class="str">#link m</span>
+<span class="op">0</span>
+<span class="op">1</span> <span class="var">main</span>
+<span class="op">4</span> stdout
+<span class="op">3</span> <span class="var">pi</span> 3.14159
+<span class="op">6</span> <span class="var">r</span> sqrt <span class="var">pi</span>
+<span class="op">2</span> <span class="str">"sqrt(pi) = %g"</span> <span class="var">r</span>
+<span class="op">6</span> <span class="var">n</span> ftoi <span class="var">r</span>
+<span class="op">2</span> <span class="str">"as int: %d"</span> <span class="var">n</span>
 <span class="op">7</span></pre>
     </div>
 
