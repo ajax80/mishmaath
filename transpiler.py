@@ -179,6 +179,9 @@ def transpile(source):
     globals_ = []
     global_vars = {}
     global_arrays2d = {}
+    thread_funcs = set()
+    spawned_vars = set()
+    mutex_vars = set()
     current = None
     entry = 'main'
 
@@ -1338,6 +1341,36 @@ def transpile(source):
                     current['declarations'].append(f'    char {safe_name(arg1)}[4096];')
                 d = safe_name(arg1)
                 current['body'].append(f'    {{ FILE *_pp = popen("{cmd}", "r"); {d}[0]=0; if(_pp){{ fgets({d}, sizeof({d}), _pp); {d}[strcspn({d}, "\\n")]=0; pclose(_pp); }} }}')
+            elif arg1 == 'spawn' and arg2:
+                fname = arg2.strip()
+                includes.add('#include <pthread.h>')
+                if '-lpthread' not in link_flags:
+                    link_flags.append('-lpthread')
+                thread_funcs.add(fname)
+                tvar = f'_mish_t_{safe_name(fname)}'
+                if tvar not in spawned_vars:
+                    spawned_vars.add(tvar)
+                    globals_.append(f'pthread_t {tvar};')
+                current['body'].append(f'    pthread_create(&{tvar}, NULL, _mish_spawn_{safe_name(fname)}, NULL);')
+            elif arg1 == 'join' and arg2:
+                fname = arg2.strip()
+                includes.add('#include <pthread.h>')
+                tvar = f'_mish_t_{safe_name(fname)}'
+                current['body'].append(f'    pthread_join({tvar}, NULL);')
+            elif arg1 == 'lock' and arg2:
+                mname = arg2.strip()
+                includes.add('#include <pthread.h>')
+                if '-lpthread' not in link_flags:
+                    link_flags.append('-lpthread')
+                mvar = f'_mish_mtx_{safe_name(mname)}'
+                if mname not in mutex_vars:
+                    mutex_vars.add(mname)
+                    globals_.append(f'pthread_mutex_t {mvar} = PTHREAD_MUTEX_INITIALIZER;')
+                current['body'].append(f'    pthread_mutex_lock(&{mvar});')
+            elif arg1 == 'unlock' and arg2:
+                mname = arg2.strip()
+                mvar = f'_mish_mtx_{safe_name(mname)}'
+                current['body'].append(f'    pthread_mutex_unlock(&{mvar});')
             elif arg1 and arg2:
                 filename = unquote(arg2)
                 includes.add('#include <stdio.h>')
@@ -1421,6 +1454,11 @@ def transpile(source):
         c.append('')
         for func in functions:
             c.append(f'{sig(func)};')
+
+    if thread_funcs:
+        c.append('')
+        for fname in sorted(thread_funcs):
+            c.append(f'static void *_mish_spawn_{safe_name(fname)}(void *_arg) {{ {safe_name(fname)}(); return NULL; }}')
 
     for func in functions:
         c.append(f'\n{sig(func)} {{')

@@ -299,6 +299,38 @@ receive loop — loops until server closes the connection:
 
 no extra dependencies. the handshake and frame codec are compiled in. supports `ws://` and `wss://` URLs (TLS not terminated natively — route wss through a proxy).
 
+**threads**
+```
+10 spawn funcname     # run funcname() as a background thread
+10 join funcname      # wait for thread to finish
+10 lock name          # acquire named mutex
+10 unlock name        # release named mutex
+```
+
+global variables (declared before any function) are shared across all threads. use `lock`/`unlock` to protect shared state.
+
+no extra dependencies — pthreads is standard on Linux. the compiler adds `-lpthread` automatically when `spawn` is used.
+
+```
+0
+3 running 1           # global: shared across threads
+
+1 worker
+9 running != 0
+  2 "tick"
+  10 sleep 100
+9
+7
+
+1 main
+4 stdout
+10 spawn worker
+10 sleep 500
+3 running 0
+10 join worker
+7
+```
+
 ---
 
 ## examples

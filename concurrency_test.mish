@@ -1,0 +1,42 @@
+#!/usr/bin/env mishmaath
+0
+3 running 1
+3 charge 100
+3 integrity 100
+
+1 telemetry
+9 running != 0
+  10 lock state
+  2 "charge: %d%% integrity: %d%%" charge integrity
+  8 charge -1
+  10 unlock state
+  10 sleep 500
+9
+7
+
+1 audio
+9 running != 0
+  2 "bone: pulse"
+  10 sleep 250
+9
+7
+
+1 main
+4 stdout
+2 "ungulate: armed -- spawning concurrent systems"
+10 spawn telemetry
+10 spawn audio
+3 i 0
+9 i 0 6
+  10 lock state
+  8 charge -2
+  8 integrity -1
+  10 unlock state
+  10 sleep 300
+  8 i +1
+9
+3 running 0
+10 join telemetry
+10 join audio
+2 "fire complete"
+7

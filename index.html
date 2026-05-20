@@ -177,7 +177,7 @@
     <tr><td>7</td><td>return</td><td>end function, optionally return a value</td></tr>
     <tr><td>8</td><td>mutate</td><td>in-place arithmetic or string append — += -= *= ++ strcat</td></tr>
     <tr><td>9</td><td>loop</td><td>for / while / decrement / step / stdin / file / sqlite query / websocket recv — bare 9 closes</td></tr>
-    <tr><td>10</td><td>io</td><td>network, terminal, file, database — HTTP, TCP, WebSocket, SQLite, sleep, rawmode...</td></tr>
+    <tr><td>10</td><td>io</td><td>network, terminal, file, database, threads — HTTP, TCP, WebSocket, SQLite, spawn, lock, sleep...</td></tr>
   </table>
 </section>
 
@@ -304,6 +304,28 @@
     <span class="op">2</span> <span class="str">"[?·unmapped] %s"</span> <span class="var">line</span>
   <span class="op">5</span>
 <span class="op">9</span>
+<span class="op">7</span></pre>
+    </div>
+
+    <div class="ex-card">
+      <div class="ex-label">concurrent threads</div>
+      <pre><span class="cmt">#!/usr/bin/env mishmaath</span>
+<span class="op">0</span>
+<span class="op">3</span> <span class="var">running</span> 1
+
+<span class="op">1</span> <span class="var">worker</span>
+<span class="op">9</span> <span class="var">running</span> != 0
+  <span class="op">2</span> <span class="str">"tick"</span>
+  <span class="op">10</span> sleep 100
+<span class="op">9</span>
+<span class="op">7</span>
+
+<span class="op">1</span> <span class="var">main</span>
+<span class="op">4</span> stdout
+<span class="op">10</span> spawn <span class="var">worker</span>
+<span class="op">10</span> sleep 500
+<span class="op">3</span> <span class="var">running</span> 0
+<span class="op">10</span> join <span class="var">worker</span>
 <span class="op">7</span></pre>
     </div>
 
