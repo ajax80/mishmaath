@@ -167,6 +167,17 @@ compound conditions:
 6 v json_num "k" s  # extract JSON numeric field
 6 v board row col   # v = board[row][col]  (2D array read)
 6 key kbhit         # non-blocking keypress (0 if none)
+6 f sqrt x          # f = sqrt(x)  (float)
+6 f sin x           # f = sin(x)
+6 f cos x           # f = cos(x)
+6 f tan x           # f = tan(x)
+6 f floor x         # f = floor(x)
+6 f ceil x          # f = ceil(x)
+6 f fabs x          # f = fabs(x)  (absolute value, float)
+6 f atof s          # f = atof(s)  (string to float)
+6 s ftoa f          # s = "%g" formatted float
+6 n ftoi f          # n = (int)f
+6 f itof n          # f = (double)n
 ```
 
 ---
@@ -394,12 +405,26 @@ compound conditions:
 
 ## types
 
-mishmaath has two types: **int** and **str** (char[256]).
+mishmaath has three types: **int**, **float**, and **str** (char[256]).
 
 type is inferred from the first assignment:
 - `3 x 5` → int
+- `3 x 3.14` → float (double precision)
 - `3 x "hello"` → str
 - `3 x` → str (empty)
+
+float requires `#link m` at the top of the file (links libm):
+
+```
+#link m
+0
+1 main
+4 stdout
+3 pi 3.14159
+6 r sqrt pi
+2 "sqrt(pi) = %g" r
+7
+```
 
 arrays are declared with `[]`:
 - `3 arr[] 10` → int[10]
