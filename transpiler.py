@@ -46,6 +46,70 @@ _JSON_HELPER = (
     '}'
 )
 
+_WS_HELPER = (
+    'static const char _mish_b64c[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";\n'
+    'static void _mish_b64e(const unsigned char *in,int len,char *out){\n'
+    '    int i,j=0;\n'
+    '    for(i=0;i<len;i+=3){\n'
+    '        unsigned int b=((unsigned int)in[i]<<16)|((i+1<len)?(unsigned int)in[i+1]<<8:0)|((i+2<len)?(unsigned int)in[i+2]:0);\n'
+    '        out[j++]=_mish_b64c[(b>>18)&63];out[j++]=_mish_b64c[(b>>12)&63];\n'
+    '        out[j++]=(i+1<len)?_mish_b64c[(b>>6)&63]:\'=\';\n'
+    '        out[j++]=(i+2<len)?_mish_b64c[b&63]:\'=\';\n'
+    '    } out[j]=0;\n'
+    '}\n'
+    'static int _mish_ws_open(const char *url){\n'
+    '    char host[256],path[1024],port[8];\n'
+    '    const char *p=url;\n'
+    '    if(strncmp(p,"ws://",5)==0)p+=5; else if(strncmp(p,"wss://",6)==0)p+=6;\n'
+    '    const char *pp=p; while(*pp&&*pp!="/"[0]&&*pp!=":") pp++;\n'
+    '    strncpy(host,p,pp-p);host[pp-p]=0; strcpy(port,"80");\n'
+    '    if(*pp==\':\'){pp++;const char *np=pp;while(*np&&*np!="/")np++;strncpy(port,pp,np-pp);port[np-pp]=0;pp=np;}\n'
+    '    strcpy(path,*pp?pp:"/");\n'
+    '    struct addrinfo hints,*res; memset(&hints,0,sizeof(hints));\n'
+    '    hints.ai_family=AF_UNSPEC;hints.ai_socktype=SOCK_STREAM;\n'
+    '    if(getaddrinfo(host,port,&hints,&res)!=0)return -1;\n'
+    '    int fd=socket(res->ai_family,res->ai_socktype,res->ai_protocol);\n'
+    '    if(connect(fd,res->ai_addr,res->ai_addrlen)<0){freeaddrinfo(res);close(fd);return -1;}\n'
+    '    freeaddrinfo(res);\n'
+    '    srand((unsigned)time(NULL));\n'
+    '    unsigned char rk[16];int ki;for(ki=0;ki<16;ki++)rk[ki]=rand()&0xff;\n'
+    '    char key[25];_mish_b64e(rk,16,key);\n'
+    '    char req[1024];\n'
+    '    snprintf(req,sizeof(req),"GET %s HTTP/1.1\\r\\nHost: %s\\r\\nUpgrade: websocket\\r\\nConnection: Upgrade\\r\\nSec-WebSocket-Key: %s\\r\\nSec-WebSocket-Version: 13\\r\\n\\r\\n",path,host,key);\n'
+    '    write(fd,req,strlen(req));\n'
+    '    char resp[2048];int rn=read(fd,resp,sizeof(resp)-1);resp[rn>0?rn:0]=0;\n'
+    '    if(!strstr(resp,"101")){close(fd);return -1;}\n'
+    '    return fd;\n'
+    '}\n'
+    'static int _mish_ws_send(int fd,const char *msg){\n'
+    '    int len=strlen(msg);\n'
+    '    unsigned char mask[4];int mi;for(mi=0;mi<4;mi++)mask[mi]=rand()&0xff;\n'
+    '    unsigned char hdr[10];int hl=2;\n'
+    '    hdr[0]=0x81;\n'
+    '    if(len<126){hdr[1]=0x80|(unsigned char)len;}\n'
+    '    else{hdr[1]=0x80|126;hdr[2]=(len>>8)&0xff;hdr[3]=len&0xff;hl=4;}\n'
+    '    memcpy(hdr+hl,mask,4);hl+=4;\n'
+    '    write(fd,hdr,hl);\n'
+    '    unsigned char *m=malloc(len+1);\n'
+    '    for(int i=0;i<len;i++)m[i]=((unsigned char)msg[i])^mask[i%4];\n'
+    '    write(fd,m,len);free(m);return 0;\n'
+    '}\n'
+    'static int _mish_ws_recv(int fd,char *buf,int sz){\n'
+    '    unsigned char h[2];if(read(fd,h,2)!=2)return -1;\n'
+    '    int op=h[0]&0x0f;if(op==8)return -1;\n'
+    '    int masked=(h[1]&0x80)!=0;\n'
+    '    long long pl=h[1]&0x7f;\n'
+    '    if(pl==126){unsigned char x[2];if(read(fd,x,2)!=2)return -1;pl=((long long)x[0]<<8)|x[1];}\n'
+    '    else if(pl==127){unsigned char x[8];if(read(fd,x,8)!=8)return -1;pl=0;for(int i=0;i<8;i++)pl=(pl<<8)|x[i];}\n'
+    '    unsigned char msk[4]={0,0,0,0};if(masked)read(fd,msk,4);\n'
+    '    int rl=(int)(pl<sz-1?pl:sz-1);\n'
+    '    if(read(fd,buf,rl)!=rl)return -1;\n'
+    '    buf[rl]=0;\n'
+    '    if(masked){for(int i=0;i<rl;i++)buf[i]^=msk[i%4];}\n'
+    '    return rl;\n'
+    '}'
+)
+
 _TERM_HELPER = (
     'static struct termios _mish_old_term;\n'
     'static void _mish_rawmode_on(void){\n'
@@ -551,6 +615,39 @@ def transpile(source):
                     '    { strcpy(' + d + ',' + s + '); char *_bp=strchr(' + d + ',\'.\');'
                     ' if(_bp){ *_bp=\'[\'; strcat(' + d + ',"]\"); } }'
                 )
+            elif arg2 and arg2.startswith('match '):
+                includes.add('#include <regex.h>')
+                _mp = arg2[6:].strip().split(None, 1)
+                _pat = unquote(_mp[0])
+                _src = _mp[1].strip() if len(_mp) > 1 else ''
+                _sv = emit_val(_src, current['variables']) if _src in current['variables'] else safe_name(_src)
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                current['body'].append(
+                    f'    {{ regex_t _re; regcomp(&_re,"{_pat}",REG_EXTENDED);'
+                    f' {safe_name(arg1)}=(regexec(&_re,{_sv},0,NULL,0)==0)?1:0; regfree(&_re); }}'
+                )
+            elif arg2 and arg2.startswith('match_get '):
+                includes.add('#include <regex.h>')
+                includes.add('#include <string.h>')
+                _mp = arg2[10:].strip().split(None, 2)
+                _pat = unquote(_mp[0])
+                _src = _mp[1].strip() if len(_mp) > 1 else ''
+                _grp = _mp[2].strip() if len(_mp) > 2 else '0'
+                _sv = emit_val(_src, current['variables']) if _src in current['variables'] else safe_name(_src)
+                _gv = int(_grp) if _grp.isdigit() else 0
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                current['body'].append(
+                    f'    {{ regex_t _re; regmatch_t _rm[{_gv+1}];'
+                    f' regcomp(&_re,"{_pat}",REG_EXTENDED);'
+                    f' if(regexec(&_re,{_sv},{_gv+1},_rm,0)==0&&_rm[{_gv}].rm_so>=0){{'
+                    f' int _rl=_rm[{_gv}].rm_eo-_rm[{_gv}].rm_so;'
+                    f' strncpy({safe_name(arg1)},{_sv}+_rm[{_gv}].rm_so,_rl);{safe_name(arg1)}[_rl]=0;}}'
+                    f' else {safe_name(arg1)}[0]=0; regfree(&_re); }}'
+                )
             elif arg2 == 'json_obj':
                 includes.add('#include <string.h>')
                 if arg1 not in current['variables']:
@@ -930,7 +1027,17 @@ def transpile(source):
                 current['body'].append(f'    while (({safe_name(arg1)} = accept({sv}, NULL, NULL)) >= 0) {{')
             elif arg1 and arg2:
                 _q9p = arg2.split(None, 2)
-                if (len(_q9p) >= 2 and _q9p[1] == 'query'
+                if (len(_q9p) == 2 and _q9p[1] == 'recv'
+                        and current['variables'].get(_q9p[0]) == 'websocket'):
+                    ws_var = _q9p[0]
+                    helpers.add('ws')
+                    includes.add('#include <string.h>')
+                    if arg1 not in current['variables']:
+                        current['variables'][arg1] = 'str'
+                        current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                    current['loop_stack'].append(('ws_recv',))
+                    current['body'].append(f'    while (_mish_ws_recv({safe_name(ws_var)}, {safe_name(arg1)}, sizeof({safe_name(arg1)})) >= 0) {{')
+                elif (len(_q9p) >= 2 and _q9p[1] == 'query'
                         and current['variables'].get(_q9p[0]) == 'sqlite3'):
                     db_var = _q9p[0]
                     sql_raw = _q9p[2] if len(_q9p) > 2 else '""'
@@ -992,6 +1099,8 @@ def transpile(source):
                 if loop_type == 'file':
                     current['body'].append('    }')
                     current['body'].append('    fclose(_fp);')
+                    current['body'].append('    }')
+                elif isinstance(loop_type, tuple) and loop_type[0] == 'ws_recv':
                     current['body'].append('    }')
                 elif isinstance(loop_type, tuple) and loop_type[0] == 'sqlite_query':
                     includes.add('#include <sqlite3.h>')
@@ -1066,6 +1175,20 @@ def transpile(source):
                 d = safe_name(arg1)
                 current['body'].append(f'    {{ int _s=socket(AF_INET,SOCK_STREAM,0); int _opt=1; setsockopt(_s,SOL_SOCKET,SO_REUSEADDR,&_opt,sizeof(_opt)); struct sockaddr_in _a; memset(&_a,0,sizeof(_a)); _a.sin_family=AF_INET; _a.sin_addr.s_addr=INADDR_ANY; _a.sin_port=htons({port_expr}); bind(_s,(struct sockaddr*)&_a,sizeof(_a)); listen(_s,10); {d}=_s; }}')
                 includes.add('#include <string.h>')
+            elif arg1 and arg2 and arg2.startswith('send ') and current['variables'].get(arg1) == 'websocket':
+                helpers.add('ws')
+                msg_raw = arg2[5:].strip()
+                mv = (emit_val(msg_raw, current['variables']) if msg_raw in current['variables']
+                      else (f'"{unquote(msg_raw)}"' if msg_raw.startswith('"') else safe_name(msg_raw)))
+                current['body'].append(f'    _mish_ws_send({safe_name(arg1)}, {mv});')
+            elif arg1 and arg2 and arg2.startswith('recv ') and current['variables'].get(arg1) == 'websocket':
+                helpers.add('ws')
+                buf_raw = arg2[5:].strip()
+                includes.add('#include <string.h>')
+                if buf_raw not in current['variables']:
+                    current['variables'][buf_raw] = 'str'
+                    current['declarations'].append(f'    char {safe_name(buf_raw)}[65536];')
+                current['body'].append(f'    _mish_ws_recv({safe_name(arg1)}, {safe_name(buf_raw)}, sizeof({safe_name(buf_raw)}));')
             elif arg1 and arg2 and arg2.startswith('recv '):
                 client_raw = arg2[5:].strip()
                 includes.add('#include <unistd.h>')
@@ -1148,14 +1271,27 @@ def transpile(source):
             elif arg1 and arg2 and arg2.startswith('open '):
                 path_raw = arg2[5:].strip()
                 path = unquote(path_raw)
-                includes.add('#include <sqlite3.h>')
-                current['variables'][arg1] = 'sqlite3'
-                current['declarations'].append(f'    sqlite3 *{safe_name(arg1)};')
-                if path_raw.startswith('"'):
-                    current['body'].append(f'    sqlite3_open("{path}", &{safe_name(arg1)});')
+                if path.startswith('ws://') or path.startswith('wss://'):
+                    helpers.add('ws')
+                    includes.add('#include <sys/types.h>')
+                    includes.add('#include <sys/socket.h>')
+                    includes.add('#include <netdb.h>')
+                    includes.add('#include <unistd.h>')
+                    includes.add('#include <stdlib.h>')
+                    includes.add('#include <time.h>')
+                    includes.add('#include <string.h>')
+                    current['variables'][arg1] = 'websocket'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                    current['body'].append(f'    {safe_name(arg1)} = _mish_ws_open("{path}");')
                 else:
-                    pv = emit_val(path_raw, current['variables']) if path_raw in current['variables'] else safe_name(path_raw)
-                    current['body'].append(f'    sqlite3_open({pv}, &{safe_name(arg1)});')
+                    includes.add('#include <sqlite3.h>')
+                    current['variables'][arg1] = 'sqlite3'
+                    current['declarations'].append(f'    sqlite3 *{safe_name(arg1)};')
+                    if path_raw.startswith('"'):
+                        current['body'].append(f'    sqlite3_open("{path}", &{safe_name(arg1)});')
+                    else:
+                        pv = emit_val(path_raw, current['variables']) if path_raw in current['variables'] else safe_name(path_raw)
+                        current['body'].append(f'    sqlite3_open({pv}, &{safe_name(arg1)});')
             elif arg1 and arg2 and arg2.startswith('exec ') and current['variables'].get(arg1) == 'sqlite3':
                 sql_raw = arg2[5:].strip()
                 includes.add('#include <sqlite3.h>')
@@ -1231,6 +1367,9 @@ def transpile(source):
     if 'term' in helpers:
         c.append('')
         c.append(_TERM_HELPER)
+    if 'ws' in helpers:
+        c.append('')
+        c.append(_WS_HELPER)
 
     if globals_:
         c.append('')

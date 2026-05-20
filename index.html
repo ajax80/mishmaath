@@ -131,9 +131,9 @@
 <div class="hero">
   <h1>11 opcodes.<br><em>Native binaries.</em></h1>
   <p class="tagline">
-    mishmaath is a minimal programming language that compiles to C via gcc.<br>
-    <strong>No runtime. No VM. No dependencies.</strong>
-    Write in numbered instructions. Get a native binary.
+    mishmaath is a numbered-instruction language — every line is a number and an operand.<br>
+    <strong>numbered instructions eliminate syntax noise.</strong> what you write maps directly to what happens.<br>
+    it transpiles to C, then gcc compiles it to a native binary. no runtime. no VM. no interpreter.
   </p>
   <div class="badges">
     <a class="badge primary" href="https://github.com/ajax80/mishmaath">view on github</a>
@@ -149,8 +149,22 @@
 </div>
 
 <section>
+  <h2>how to read a mishmaath program</h2>
+  <p>every line starts with a number — the opcode. everything after it is the operand. indentation is optional and ignored.</p>
+  <pre><span class="op">3</span> <span class="var">x</span> 7          <span class="cmt">→  let x = 7</span>
+<span class="op">5</span> <span class="var">x</span> > 5       <span class="cmt">→  if (x > 5) {</span>
+  <span class="op">2</span> <span class="str">"big"</span>       <span class="cmt">→    print "big"</span>
+<span class="op">5</span>             <span class="cmt">→  }   bare 5 closes the block</span>
+<span class="op">9</span> <span class="var">i</span> 0 10      <span class="cmt">→  for (i = 0; i &lt; 10; i++) {</span>
+  <span class="op">2</span> <span class="str">"%d"</span> <span class="var">i</span>    <span class="cmt">→    printf("%d\n", i)</span>
+<span class="op">9</span>             <span class="cmt">→  }   bare 9 closes the loop</span>
+<span class="op">7</span>             <span class="cmt">→  return 0</span></pre>
+  <p>opcodes 0–6 are language mechanics. 7 is return. 8 is mutation. 9 is loops. 10 is all I/O — terminal, network, file, database.</p>
+</section>
+
+<section>
   <h2>the opcode table</h2>
-  <p>Every mishmaath program is a sequence of these 11 instructions. One per line. First token is the opcode.</p>
+  <p>eleven instructions. one per line. first token is the opcode.</p>
   <table class="optable">
     <tr><th>op</th><th>name</th><th>what it does</th></tr>
     <tr><td>0</td><td>module</td><td>top-level setup, raw C passthrough via <code>0 c ...</code></td></tr>
