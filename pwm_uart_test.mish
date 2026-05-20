@@ -1,0 +1,32 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+3 duty 0
+3 msg
+3 pin 6
+
+2 "-- PWM set (literal) --"
+10 pwm set 6 128
+
+2 "-- PWM set (variable pin + duty) --"
+3 duty 200
+10 pwm set pin duty
+
+2 "-- PWM sweep --"
+9 duty 0 256 64
+  10 pwm set 6 duty
+  2 "  duty=%d" duty
+9
+
+2 "-- UART send (literal) --"
+10 uart send "bodyguard online"
+
+2 "-- UART send (variable) --"
+3 msg "aim locked"
+10 uart send msg
+
+2 "-- UART recv --"
+10 msg uart recv
+2 "uart got: %s" msg
+7

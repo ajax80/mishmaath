@@ -90,6 +90,16 @@ _HAL_STUB_HELPER = (
     '    printf("[GPIO] get pin %d -> 0 (stub)\\n",pin);\n'
     '    return 0;\n'
     '}\n'
+    'static void mish_pwm_set(int pin,int duty){\n'
+    '    printf("[PWM] pin %d duty %d/255 (stub)\\n",pin,duty);\n'
+    '}\n'
+    'static void mish_uart_send(const char *msg){\n'
+    '    printf("[UART] tx: %s\\n",msg);\n'
+    '}\n'
+    'static void mish_uart_recv(char *buf,int sz){\n'
+    '    strncpy(buf,"stub_uart_data",sz-1); buf[sz-1]=0;\n'
+    '    printf("[UART] rx: %s (stub)\\n",buf);\n'
+    '}\n'
     '#endif'
 )
 
@@ -1614,6 +1624,32 @@ def transpile(source):
                     current['declarations'].append(f'    int {safe_name(arg1)};')
                 pin_expr = emit_val(pin_raw, current['variables']) if pin_raw in current['variables'] else pin_raw
                 current['body'].append(f'    {safe_name(arg1)} = mish_gpio_get({pin_expr});')
+            elif arg1 == 'pwm' and arg2 and arg2.startswith('set '):
+                _pwp = arg2[4:].strip().split()
+                pin_raw = _pwp[0] if _pwp else '0'
+                duty_raw = _pwp[1] if len(_pwp) > 1 else '0'
+                helpers.add('hal')
+                includes.add('#include <stdio.h>')
+                pin_expr = emit_val(pin_raw, current['variables']) if pin_raw in current['variables'] else pin_raw
+                duty_expr = emit_val(duty_raw, current['variables']) if duty_raw in current['variables'] else duty_raw
+                current['body'].append(f'    mish_pwm_set({pin_expr},{duty_expr});')
+            elif arg1 == 'uart' and arg2 and arg2.startswith('send '):
+                msg_raw = arg2[5:].strip()
+                helpers.add('hal')
+                includes.add('#include <stdio.h>')
+                if msg_raw.startswith('"'):
+                    msg_expr = f'"{unquote(msg_raw)}"'
+                else:
+                    msg_expr = emit_val(msg_raw, current['variables']) if msg_raw in current['variables'] else safe_name(msg_raw)
+                current['body'].append(f'    mish_uart_send({msg_expr});')
+            elif arg1 and arg2 == 'uart recv':
+                helpers.add('hal')
+                includes.add('#include <stdio.h>')
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                current['body'].append(f'    mish_uart_recv({safe_name(arg1)},sizeof({safe_name(arg1)}));')
             elif arg1 and arg2 and arg2.startswith('shell_all '):
                 cmd_raw = arg2[10:].strip()
                 includes.add('#include <stdio.h>')

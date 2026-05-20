@@ -33,3 +33,33 @@ void mish_gpio_set(int pin, int val) {
 int mish_gpio_get(int pin) {
     return (int)HAL_GPIO_ReadPin(GPIOD, (1 << pin));
 }
+
+/* PWM — duty 0–255, mapped to timer compare register
+ * assumes TIM3 configured in PWM mode, period = 255 */
+void mish_pwm_set(int pin, int duty) {
+    /* pin maps to timer channel — adapt per your wiring */
+    TIM_OC_InitTypeDef cfg = {0};
+    cfg.OCMode     = TIM_OCMODE_PWM1;
+    cfg.Pulse      = (uint32_t)duty;
+    cfg.OCPolarity = TIM_OCPOLARITY_HIGH;
+    cfg.OCFastMode = TIM_OCFAST_DISABLE;
+    HAL_TIM_PWM_ConfigChannel(&htim3, &cfg, TIM_CHANNEL_1);
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+}
+
+/* UART — assumes huart2 (USB-serial on Nucleo / USART2 on F407VE) */
+void mish_uart_send(const char *msg) {
+    HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+}
+
+void mish_uart_recv(char *buf, int sz) {
+    /* read until newline or buffer full */
+    int i = 0;
+    uint8_t b;
+    while (i < sz - 1) {
+        if (HAL_UART_Receive(&huart2, &b, 1, HAL_MAX_DELAY) != HAL_OK) break;
+        if (b == '\n') break;
+        buf[i++] = (char)b;
+    }
+    buf[i] = 0;
+}
