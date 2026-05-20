@@ -77,6 +77,22 @@ _STRING_HELPER = (
     '}'
 )
 
+_HAL_STUB_HELPER = (
+    '#ifndef MISH_HAL_REAL\n'
+    'static int mish_adc_read(int pin){\n'
+    '    printf("[ADC] pin %d -> 512 (stub)\\n",pin);\n'
+    '    return 512;\n'
+    '}\n'
+    'static void mish_gpio_set(int pin,int val){\n'
+    '    printf("[GPIO] set pin %d = %d (stub)\\n",pin,val);\n'
+    '}\n'
+    'static int mish_gpio_get(int pin){\n'
+    '    printf("[GPIO] get pin %d -> 0 (stub)\\n",pin);\n'
+    '    return 0;\n'
+    '}\n'
+    '#endif'
+)
+
 _WS_HELPER = (
     'static const char _mish_b64c[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";\n'
     'static void _mish_b64e(const unsigned char *in,int len,char *out){\n'
@@ -1571,6 +1587,33 @@ def transpile(source):
                 mname = arg2.strip()
                 mvar = f'_mish_mtx_{safe_name(mname)}'
                 current['body'].append(f'    pthread_mutex_unlock(&{mvar});')
+            elif arg1 and arg2 and arg2.startswith('adc '):
+                pin_raw = arg2[4:].strip()
+                helpers.add('hal')
+                includes.add('#include <stdio.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                pin_expr = emit_val(pin_raw, current['variables']) if pin_raw in current['variables'] else pin_raw
+                current['body'].append(f'    {safe_name(arg1)} = mish_adc_read({pin_expr});')
+            elif arg1 == 'gpio' and arg2 and arg2.startswith('set '):
+                _gsp = arg2[4:].strip().split()
+                pin_raw = _gsp[0] if _gsp else '0'
+                val_raw = _gsp[1] if len(_gsp) > 1 else '0'
+                helpers.add('hal')
+                includes.add('#include <stdio.h>')
+                pin_expr = emit_val(pin_raw, current['variables']) if pin_raw in current['variables'] else pin_raw
+                val_expr = emit_val(val_raw, current['variables']) if val_raw in current['variables'] else val_raw
+                current['body'].append(f'    mish_gpio_set({pin_expr},{val_expr});')
+            elif arg1 and arg2 and arg2.startswith('gpio get '):
+                pin_raw = arg2[9:].strip()
+                helpers.add('hal')
+                includes.add('#include <stdio.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                pin_expr = emit_val(pin_raw, current['variables']) if pin_raw in current['variables'] else pin_raw
+                current['body'].append(f'    {safe_name(arg1)} = mish_gpio_get({pin_expr});')
             elif arg1 and arg2 and arg2.startswith('shell_all '):
                 cmd_raw = arg2[10:].strip()
                 includes.add('#include <stdio.h>')
@@ -1673,6 +1716,9 @@ def transpile(source):
     if 'ws' in helpers:
         c.append('')
         c.append(_WS_HELPER)
+    if 'hal' in helpers:
+        c.append('')
+        c.append(_HAL_STUB_HELPER)
 
     if globals_:
         c.append('')
