@@ -213,6 +213,8 @@ def transpile(source):
     thread_funcs = set()
     spawned_vars = set()
     mutex_vars = set()
+    global_vars['_err'] = 'int'
+    globals_.append('int _err = 0;')
     current = None
     entry = 'main'
 
@@ -659,10 +661,10 @@ def transpile(source):
                 d = safe_name(arg1)
                 if path_raw.startswith('"'):
                     path = unquote(path_raw)
-                    current['body'].append(f'    {{ FILE *_rf=fopen("{path}","r"); {d}[0]=0; if(_rf){{size_t _rn=fread({d},1,sizeof({d})-1,_rf); {d}[_rn]=0; fclose(_rf);}} }}')
+                    current['body'].append(f'    {{ FILE *_rf=fopen("{path}","r"); {d}[0]=0; if(_rf){{size_t _rn=fread({d},1,sizeof({d})-1,_rf); {d}[_rn]=0; fclose(_rf); _err=0;}} else _err=1; }}')
                 else:
                     pv = emit_val(path_raw, current['variables']) if path_raw in current['variables'] else safe_name(path_raw)
-                    current['body'].append(f'    {{ FILE *_rf=fopen({pv},"r"); {d}[0]=0; if(_rf){{size_t _rn=fread({d},1,sizeof({d})-1,_rf); {d}[_rn]=0; fclose(_rf);}} }}')
+                    current['body'].append(f'    {{ FILE *_rf=fopen({pv},"r"); {d}[0]=0; if(_rf){{size_t _rn=fread({d},1,sizeof({d})-1,_rf); {d}[_rn]=0; fclose(_rf); _err=0;}} else _err=1; }}')
             elif arg2 and arg2.startswith('exists '):
                 path_raw = arg2[7:].strip()
                 includes.add('#include <unistd.h>')
@@ -1344,7 +1346,7 @@ def transpile(source):
                     current['declarations'].append(f'    int {safe_name(arg1)};')
                 port_expr = emit_val(port_raw, current['variables']) if port_raw in current['variables'] else port_raw
                 d = safe_name(arg1)
-                current['body'].append(f'    {{ int _s=socket(AF_INET,SOCK_STREAM,0); int _opt=1; setsockopt(_s,SOL_SOCKET,SO_REUSEADDR,&_opt,sizeof(_opt)); struct sockaddr_in _a; memset(&_a,0,sizeof(_a)); _a.sin_family=AF_INET; _a.sin_addr.s_addr=INADDR_ANY; _a.sin_port=htons({port_expr}); bind(_s,(struct sockaddr*)&_a,sizeof(_a)); listen(_s,10); {d}=_s; }}')
+                current['body'].append(f'    {{ int _s=socket(AF_INET,SOCK_STREAM,0); int _opt=1; setsockopt(_s,SOL_SOCKET,SO_REUSEADDR,&_opt,sizeof(_opt)); struct sockaddr_in _a; memset(&_a,0,sizeof(_a)); _a.sin_family=AF_INET; _a.sin_addr.s_addr=INADDR_ANY; _a.sin_port=htons({port_expr}); int _br=bind(_s,(struct sockaddr*)&_a,sizeof(_a)); listen(_s,10); {d}=_s; _err=(_s<0||_br<0)?1:0; }}')
                 includes.add('#include <string.h>')
             elif arg1 and arg2 and arg2.startswith('send ') and current['variables'].get(arg1) == 'websocket':
                 helpers.add('ws')
@@ -1419,10 +1421,10 @@ def transpile(source):
                 d = safe_name(arg1)
                 if url_raw.startswith('"'):
                     url = unquote(url_raw)
-                    current['body'].append(f'    {{ FILE *_pp = popen("curl -s {url}", "r"); {d}[0]=0; if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen({d})+strlen(_ln)<65535)strcat({d},_ln); }} pclose(_pp); }} }}')
+                    current['body'].append(f'    {{ FILE *_pp = popen("curl -sf {url}", "r"); {d}[0]=0; if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen({d})+strlen(_ln)<65535)strcat({d},_ln); }} int _prc=pclose(_pp); _err=(_prc!=0||{d}[0]==0)?1:0; }} else _err=1; }}')
                 else:
                     u = emit_val(url_raw, current['variables']) if url_raw in current['variables'] else safe_name(url_raw)
-                    current['body'].append(f'    {{ char _gc[4096]; snprintf(_gc,sizeof(_gc),"curl -s %s",{u}); FILE *_pp=popen(_gc,"r"); {d}[0]=0; if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen({d})+strlen(_ln)<65535)strcat({d},_ln); }} pclose(_pp); }} }}')
+                    current['body'].append(f'    {{ char _gc[4096]; snprintf(_gc,sizeof(_gc),"curl -sf %s",{u}); FILE *_pp=popen(_gc,"r"); {d}[0]=0; if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen({d})+strlen(_ln)<65535)strcat({d},_ln); }} int _prc=pclose(_pp); _err=(_prc!=0||{d}[0]==0)?1:0; }} else _err=1; }}')
             elif arg1 and arg2 and arg2.startswith('post '):
                 rest2 = arg2[5:].strip()
                 parts2 = rest2.split(None, 1)
@@ -1438,7 +1440,7 @@ def transpile(source):
                 body = unquote(body_raw) if body_raw.startswith('"') else None
                 url_expr = f'"{url}"' if url else (emit_val(url_raw, current['variables']) if url_raw in current['variables'] else safe_name(url_raw))
                 body_expr = f'"{body}"' if body else (emit_val(body_raw, current['variables']) if body_raw in current['variables'] else safe_name(body_raw))
-                current['body'].append(f'    {{ char _pc[8192]; snprintf(_pc,sizeof(_pc),"curl -s -X POST -d \'%s\' %s",{body_expr},{url_expr}); FILE *_pp=popen(_pc,"r"); {d}[0]=0; if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen({d})+strlen(_ln)<65535)strcat({d},_ln); }} pclose(_pp); }} }}')
+                current['body'].append(f'    {{ char _pc[8192]; snprintf(_pc,sizeof(_pc),"curl -sf -X POST -d \'%s\' %s",{body_expr},{url_expr}); FILE *_pp=popen(_pc,"r"); {d}[0]=0; if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen({d})+strlen(_ln)<65535)strcat({d},_ln); }} int _prc=pclose(_pp); _err=(_prc!=0||{d}[0]==0)?1:0; }} else _err=1; }}')
             elif arg1 and arg2 and arg2.startswith('open '):
                 path_raw = arg2[5:].strip()
                 path = unquote(path_raw)
@@ -1453,25 +1455,25 @@ def transpile(source):
                     includes.add('#include <string.h>')
                     current['variables'][arg1] = 'websocket'
                     current['declarations'].append(f'    int {safe_name(arg1)};')
-                    current['body'].append(f'    {safe_name(arg1)} = _mish_ws_open("{path}");')
+                    current['body'].append(f'    {safe_name(arg1)} = _mish_ws_open("{path}"); _err = ({safe_name(arg1)} < 0) ? 1 : 0;')
                 else:
                     includes.add('#include <sqlite3.h>')
                     current['variables'][arg1] = 'sqlite3'
                     current['declarations'].append(f'    sqlite3 *{safe_name(arg1)};')
                     if path_raw.startswith('"'):
-                        current['body'].append(f'    sqlite3_open("{path}", &{safe_name(arg1)});')
+                        current['body'].append(f'    _err = sqlite3_open("{path}", &{safe_name(arg1)});')
                     else:
                         pv = emit_val(path_raw, current['variables']) if path_raw in current['variables'] else safe_name(path_raw)
-                        current['body'].append(f'    sqlite3_open({pv}, &{safe_name(arg1)});')
+                        current['body'].append(f'    _err = sqlite3_open({pv}, &{safe_name(arg1)});')
             elif arg1 and arg2 and arg2.startswith('exec ') and current['variables'].get(arg1) == 'sqlite3':
                 sql_raw = arg2[5:].strip()
                 includes.add('#include <sqlite3.h>')
                 if sql_raw.startswith('"'):
                     sql = unquote(sql_raw)
-                    current['body'].append(f'    sqlite3_exec({safe_name(arg1)}, "{sql}", 0, 0, 0);')
+                    current['body'].append(f'    _err = sqlite3_exec({safe_name(arg1)}, "{sql}", 0, 0, 0);')
                 else:
                     sv = emit_val(sql_raw, current['variables']) if sql_raw in current['variables'] else safe_name(sql_raw)
-                    current['body'].append(f'    sqlite3_exec({safe_name(arg1)}, {sv}, 0, 0, 0);')
+                    current['body'].append(f'    _err = sqlite3_exec({safe_name(arg1)}, {sv}, 0, 0, 0);')
             elif arg1 and arg2 and arg2.startswith('shell '):
                 cmd = unquote(arg2[6:].strip())
                 includes.add('#include <stdio.h>')
@@ -1480,7 +1482,7 @@ def transpile(source):
                     current['variables'][arg1] = 'str'
                     current['declarations'].append(f'    char {safe_name(arg1)}[4096];')
                 d = safe_name(arg1)
-                current['body'].append(f'    {{ FILE *_pp = popen("{cmd}", "r"); {d}[0]=0; if(_pp){{ fgets({d}, sizeof({d}), _pp); {d}[strcspn({d}, "\\n")]=0; pclose(_pp); }} }}')
+                current['body'].append(f'    {{ FILE *_pp = popen("{cmd}", "r"); {d}[0]=0; if(_pp){{ fgets({d}, sizeof({d}), _pp); {d}[strcspn({d}, "\\n")]=0; int _src=pclose(_pp); _err=(_src!=0)?1:0; }} else _err=1; }}')
             elif arg1 == 'delete' and arg2:
                 path_raw = arg2.strip()
                 includes.add('#include <stdio.h>')
@@ -1506,10 +1508,10 @@ def transpile(source):
                 _wfmt = '%d' if current['variables'].get(_wvar_raw) == 'int' else '%s'
                 if _wpath_raw.startswith('"'):
                     _wpath = unquote(_wpath_raw)
-                    current['body'].append(f'    {{ FILE *_wf=fopen("{_wpath}","w"); if(_wf){{fprintf(_wf,"{_wfmt}",{_wvv}); fclose(_wf);}} }}')
+                    current['body'].append(f'    {{ FILE *_wf=fopen("{_wpath}","w"); if(_wf){{fprintf(_wf,"{_wfmt}",{_wvv}); fclose(_wf); _err=0;}} else _err=1; }}')
                 else:
                     _wpv = emit_val(_wpath_raw, current['variables']) if _wpath_raw in current['variables'] else safe_name(_wpath_raw)
-                    current['body'].append(f'    {{ FILE *_wf=fopen({_wpv},"w"); if(_wf){{fprintf(_wf,"{_wfmt}",{_wvv}); fclose(_wf);}} }}')
+                    current['body'].append(f'    {{ FILE *_wf=fopen({_wpv},"w"); if(_wf){{fprintf(_wf,"{_wfmt}",{_wvv}); fclose(_wf); _err=0;}} else _err=1; }}')
             elif arg1 == 'spawn' and arg2:
                 fname = arg2.strip()
                 includes.add('#include <pthread.h>')

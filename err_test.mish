@@ -1,0 +1,24 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+3 s
+6 s read "/nonexistent/file.txt"
+5 _err != 0
+  2 "read failed as expected: %d" _err
+5
+3 data "err test ok"
+10 write data "/tmp/mishmaath_err_test.txt"
+5 _err != 0
+  2 "write failed: %d" _err
+5 else
+  2 "write ok: %d" _err
+5
+6 s read "/tmp/mishmaath_err_test.txt"
+5 _err != 0
+  2 "read failed: %d" _err
+5 else
+  2 "read ok: [%s]" s
+5
+10 delete "/tmp/mishmaath_err_test.txt"
+7

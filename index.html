@@ -398,6 +398,18 @@
 </section>
 
 <section>
+  <h2>error state</h2>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:16px"><code style="color:var(--var)">_err</code> is a global int, always available. every fallible op sets it — <code style="color:var(--op)">0</code> = ok, non-zero = failed.</p>
+  <pre><span class="op">10</span> body get <span class="str">"https://api.example.com/data"</span>
+<span class="op">5</span> <span class="var">_err</span> != 0
+  <span class="op">2</span> <span class="str">"request failed: %d"</span> <span class="var">_err</span>
+<span class="op">5</span> else
+  <span class="op">2</span> <span class="str">"got: %s"</span> <span class="var">body</span>
+<span class="op">5</span></pre>
+  <p style="color:var(--muted);font-size:12px;margin-top:12px">sets <code style="color:var(--var)">_err</code>: <code>10 get</code> · <code>10 post</code> · <code>10 db open</code> · <code>10 db exec</code> · <code>10 ws open</code> · <code>10 srv listen</code> · <code>10 shell</code> · <code>10 write</code> · <code>6 read</code></p>
+</section>
+
+<section>
   <h2>run a program</h2>
   <pre><span class="cmt"># run directly (add #!/usr/bin/env mishmaath and chmod +x)</span>
 <span class="kw">./</span><span class="var">hello.mish</span>

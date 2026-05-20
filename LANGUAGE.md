@@ -606,6 +606,36 @@ the ratio of `[?·unmapped]` to mapped lines is real-time ambiguity measurement.
 
 ---
 
+## error state
+
+`_err` is a global integer, always available. every fallible op sets it: `0` = success, non-zero = failure.
+
+```
+10 body get "https://api.example.com/data"
+5 _err != 0
+  2 "request failed: %d" _err
+5 else
+  2 "got: %s" body
+5
+```
+
+ops that set `_err`:
+
+| op | sets _err when |
+|----|----------------|
+| `10 get` / `10 post` | curl fails or response empty |
+| `10 db open` | sqlite3 cannot open file |
+| `10 db exec` | SQL statement fails |
+| `10 ws open` | connection refused or DNS failure |
+| `10 srv listen` | bind fails (port in use) |
+| `10 shell` | command exits non-zero |
+| `10 write` | file cannot be opened for writing |
+| `6 read` | file does not exist or not readable |
+
+sqlite returns the actual sqlite3 error code. everything else: `1` = failed, `0` = ok.
+
+---
+
 ## types
 
 mishmaath has three types: **int**, **float**, and **str** (char[256]).
