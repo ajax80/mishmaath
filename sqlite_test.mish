@@ -1,0 +1,16 @@
+#!/usr/bin/env mishmaath
+#link sqlite3
+0
+1 main
+4 stdout
+10 db open "test.db"
+10 db exec "CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY, msg TEXT)"
+10 db exec "INSERT INTO log (msg) VALUES ('hello mishmaath')"
+10 db exec "INSERT INTO log (msg) VALUES ('sqlite is alive')"
+9 row db query "SELECT id, msg FROM log"
+  6 id db col 0
+  6 msg db col 1
+  2 "[%s] %s" id msg
+9
+10 db close
+7

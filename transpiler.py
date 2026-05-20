@@ -396,6 +396,16 @@ def transpile(source):
                     current['variables'][arg1] = 'int'
                     current['declarations'].append(f'    int {safe_name(arg1)};')
                 current['body'].append(f'    {safe_name(arg1)} = {safe_name(_r6p[0])}[{_ri}][{_ci}];')
+            elif arg2 and len(arg2.split()) == 3 and arg2.split()[1] == 'col' and current['variables'].get(arg2.split()[0]) == 'sqlite3':
+                _cp = arg2.split()
+                db_var, col_n = _cp[0], _cp[2]
+                stmt_name = f'_stmt_{safe_name(db_var)}'
+                includes.add('#include <sqlite3.h>')
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                current['body'].append(f'    {{ const char *_cc=(const char*)sqlite3_column_text({stmt_name},{col_n}); strcpy({safe_name(arg1)},_cc?_cc:""); }}')
             elif arg2 and arg2.startswith('len '):
                 src = arg2[4:].strip()
                 includes.add('#include <string.h>')
@@ -827,43 +837,74 @@ def transpile(source):
                 current['loop_stack'].append('accept')
                 current['body'].append(f'    while (({safe_name(arg1)} = accept({sv}, NULL, NULL)) >= 0) {{')
             elif arg1 and arg2:
-                parts2 = arg2.split()
-                is_for = False
-                if len(parts2) >= 2:
-                    try:
-                        start = int(parts2[0])
-                        limit = parts2[1]
-                        if arg1 not in current['variables']:
-                            current['variables'][arg1] = 'int'
-                            current['declarations'].append(f'    int {safe_name(arg1)};')
-                        lv = emit_val(limit, current['variables']) if limit in current['variables'] else limit
-                        current['loop_stack'].append('for')
-                        current['body'].append(f'    for ({safe_name(arg1)} = {start}; {safe_name(arg1)} < {lv}; {safe_name(arg1)}++) {{')
-                        is_for = True
-                    except ValueError:
-                        pass
-                if not is_for:
-                    w_op = '<'
-                    w_rest = arg2
-                    for cop in ('!=', '>=', '<=', '>', '<', '=='):
-                        if arg2.startswith(cop):
-                            w_op = cop
-                            w_rest = arg2[len(cop):].strip()
-                            break
-                    val = unquote(w_rest)
-                    if arg1 in current['variables'] and current['variables'][arg1] == 'int':
-                        current['loop_stack'].append('while')
-                        current['body'].append(f'    while ({safe_name(arg1)} {w_op} {val}) {{')
+                _q9p = arg2.split(None, 2)
+                if (len(_q9p) >= 2 and _q9p[1] == 'query'
+                        and current['variables'].get(_q9p[0]) == 'sqlite3'):
+                    db_var = _q9p[0]
+                    sql_raw = _q9p[2] if len(_q9p) > 2 else '""'
+                    sql = unquote(sql_raw) if sql_raw.startswith('"') else None
+                    stmt_name = f'_stmt_{safe_name(db_var)}'
+                    includes.add('#include <sqlite3.h>')
+                    includes.add('#include <string.h>')
+                    if arg1 not in current['variables']:
+                        current['variables'][arg1] = 'str'
+                        current['declarations'].append(f'    char {safe_name(arg1)}[4096];')
+                    current['declarations'].append(f'    sqlite3_stmt *{stmt_name};')
+                    if sql:
+                        current['body'].append(f'    sqlite3_prepare_v2({safe_name(db_var)}, "{sql}", -1, &{stmt_name}, 0);')
                     else:
-                        includes.add('#include <string.h>')
-                        current['loop_stack'].append('while')
-                        current['body'].append(f'    while (strcmp({safe_name(arg1)}, "{val}") != 0) {{')
+                        sv = emit_val(sql_raw, current['variables']) if sql_raw in current['variables'] else safe_name(sql_raw)
+                        current['body'].append(f'    sqlite3_prepare_v2({safe_name(db_var)}, {sv}, -1, &{stmt_name}, 0);')
+                    current['body'].append(f'    while (sqlite3_step({stmt_name}) == SQLITE_ROW) {{')
+                    current['body'].append(
+                        f'        {{ int _nc=sqlite3_column_count({stmt_name}),_ci; {safe_name(arg1)}[0]=0;'
+                        f' for(_ci=0;_ci<_nc;_ci++){{ if(_ci)strcat({safe_name(arg1)},"\\t");'
+                        f' const char *_cv=(const char*)sqlite3_column_text({stmt_name},_ci);'
+                        f' if(_cv)strncat({safe_name(arg1)},_cv,sizeof({safe_name(arg1)})-strlen({safe_name(arg1)})-1); }} }}'
+                    )
+                    current['loop_stack'].append(('sqlite_query', stmt_name))
+                else:
+                    parts2 = arg2.split()
+                    is_for = False
+                    if len(parts2) >= 2:
+                        try:
+                            start = int(parts2[0])
+                            limit = parts2[1]
+                            if arg1 not in current['variables']:
+                                current['variables'][arg1] = 'int'
+                                current['declarations'].append(f'    int {safe_name(arg1)};')
+                            lv = emit_val(limit, current['variables']) if limit in current['variables'] else limit
+                            current['loop_stack'].append('for')
+                            current['body'].append(f'    for ({safe_name(arg1)} = {start}; {safe_name(arg1)} < {lv}; {safe_name(arg1)}++) {{')
+                            is_for = True
+                        except ValueError:
+                            pass
+                    if not is_for:
+                        w_op = '<'
+                        w_rest = arg2
+                        for cop in ('!=', '>=', '<=', '>', '<', '=='):
+                            if arg2.startswith(cop):
+                                w_op = cop
+                                w_rest = arg2[len(cop):].strip()
+                                break
+                        val = unquote(w_rest)
+                        if arg1 in current['variables'] and current['variables'][arg1] == 'int':
+                            current['loop_stack'].append('while')
+                            current['body'].append(f'    while ({safe_name(arg1)} {w_op} {val}) {{')
+                        else:
+                            includes.add('#include <string.h>')
+                            current['loop_stack'].append('while')
+                            current['body'].append(f'    while (strcmp({safe_name(arg1)}, "{val}") != 0) {{')
             else:
                 loop_type = current['loop_stack'].pop() if current['loop_stack'] else 'while'
                 if loop_type == 'file':
                     current['body'].append('    }')
                     current['body'].append('    fclose(_fp);')
                     current['body'].append('    }')
+                elif isinstance(loop_type, tuple) and loop_type[0] == 'sqlite_query':
+                    includes.add('#include <sqlite3.h>')
+                    current['body'].append('    }')
+                    current['body'].append(f'    sqlite3_finalize({loop_type[1]});')
                 else:
                     current['body'].append('    }')
 
@@ -951,9 +992,13 @@ def transpile(source):
                 rv = emit_val(resp_raw, current['variables']) if resp_raw in current['variables'] else f'"{resp_raw}"'
                 current['body'].append(f'    write({cv}, {rv}, strlen({rv}));')
             elif arg1 and arg2 == 'close':
-                includes.add('#include <unistd.h>')
-                cv = emit_val(arg1, current['variables']) if arg1 in current['variables'] else safe_name(arg1)
-                current['body'].append(f'    close({cv});')
+                if current['variables'].get(arg1) == 'sqlite3':
+                    includes.add('#include <sqlite3.h>')
+                    current['body'].append(f'    sqlite3_close({safe_name(arg1)});')
+                else:
+                    includes.add('#include <unistd.h>')
+                    cv = emit_val(arg1, current['variables']) if arg1 in current['variables'] else safe_name(arg1)
+                    current['body'].append(f'    close({cv});')
             elif arg1 and arg2 and arg2.startswith('http_ok '):
                 resp_raw = arg2[8:].strip()
                 includes.add('#include <unistd.h>')
@@ -1008,6 +1053,26 @@ def transpile(source):
                 url_expr = f'"{url}"' if url else (emit_val(url_raw, current['variables']) if url_raw in current['variables'] else safe_name(url_raw))
                 body_expr = f'"{body}"' if body else (emit_val(body_raw, current['variables']) if body_raw in current['variables'] else safe_name(body_raw))
                 current['body'].append(f'    {{ char _pc[8192]; snprintf(_pc,sizeof(_pc),"curl -s -X POST -d \'%s\' %s",{body_expr},{url_expr}); FILE *_pp=popen(_pc,"r"); {d}[0]=0; if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen({d})+strlen(_ln)<65535)strcat({d},_ln); }} pclose(_pp); }} }}')
+            elif arg1 and arg2 and arg2.startswith('open '):
+                path_raw = arg2[5:].strip()
+                path = unquote(path_raw)
+                includes.add('#include <sqlite3.h>')
+                current['variables'][arg1] = 'sqlite3'
+                current['declarations'].append(f'    sqlite3 *{safe_name(arg1)};')
+                if path_raw.startswith('"'):
+                    current['body'].append(f'    sqlite3_open("{path}", &{safe_name(arg1)});')
+                else:
+                    pv = emit_val(path_raw, current['variables']) if path_raw in current['variables'] else safe_name(path_raw)
+                    current['body'].append(f'    sqlite3_open({pv}, &{safe_name(arg1)});')
+            elif arg1 and arg2 and arg2.startswith('exec ') and current['variables'].get(arg1) == 'sqlite3':
+                sql_raw = arg2[5:].strip()
+                includes.add('#include <sqlite3.h>')
+                if sql_raw.startswith('"'):
+                    sql = unquote(sql_raw)
+                    current['body'].append(f'    sqlite3_exec({safe_name(arg1)}, "{sql}", 0, 0, 0);')
+                else:
+                    sv = emit_val(sql_raw, current['variables']) if sql_raw in current['variables'] else safe_name(sql_raw)
+                    current['body'].append(f'    sqlite3_exec({safe_name(arg1)}, {sv}, 0, 0, 0);')
             elif arg1 and arg2 and arg2.startswith('shell '):
                 cmd = unquote(arg2[6:].strip())
                 includes.add('#include <stdio.h>')
