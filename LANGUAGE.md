@@ -158,6 +158,7 @@ compound conditions:
 6 s skip s          # s after first word
 6 n atoi s          # n = atoi(s)
 6 s itoa n          # sprintf(s, "%d", n)
+6 s fmt "%d of %d" a b  # sprintf into s — multiple values, any format
 6 n min a b         # n = min(a, b)
 6 n max a b         # n = max(a, b)
 6 n abs x           # n = abs(x)
@@ -217,6 +218,8 @@ compound conditions:
 9 line file path.txt  # while (fgets(line, ..., fp))
 9 i 0 10              # for (i = 0; i < 10; i++)
 9 i 0 n               # for (i = 0; i < n; i++)
+9 i 10 0 -1           # for (i = 10; i > 0; i--)  decrement
+9 i 0 100 5           # for (i = 0; i < 100; i += 5)  step
 9 x != 0              # while (x != 0)
 9 x < limit           # while (x < limit)
 9 client accept srv        # while ((client = accept(srv)) >= 0)
