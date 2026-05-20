@@ -290,7 +290,7 @@ def transpile(source):
                     if dest_type == 'int*':
                         current['body'].append(f'    *{safe_name(arg1)} = {src_expr};')
                     elif already:
-                        if src_type in ('int', 'int*'):
+                        if src_type in ('int', 'int*', 'float'):
                             current['body'].append(f'    {safe_name(arg1)} = {src_expr};')
                         else:
                             includes.add('#include <string.h>')
@@ -299,19 +299,40 @@ def transpile(source):
                         current['variables'][arg1] = 'int' if src_type in ('int', 'int*') else src_type
                         if src_type in ('int', 'int*'):
                             current['declarations'].append(f'    int {safe_name(arg1)} = {src_expr};')
+                        elif src_type == 'float':
+                            includes.add('#include <math.h>')
+                            current['declarations'].append(f'    double {safe_name(arg1)} = {src_expr};')
                         else:
                             includes.add('#include <string.h>')
                             current['declarations'].append(f'    char {safe_name(arg1)}[256];')
                             current['declarations'].append(f'    strcpy({safe_name(arg1)}, {safe_name(arg2)});')
                 else:
+                    _is_int_lit = False
+                    _is_float_lit = False
                     try:
-                        int(raw)
+                        int(raw); _is_int_lit = True
+                    except ValueError:
+                        pass
+                    if not _is_int_lit:
+                        try:
+                            float(raw)
+                            if '.' in raw or 'e' in raw.lower(): _is_float_lit = True
+                        except ValueError:
+                            pass
+                    if _is_int_lit:
                         if already:
                             current['body'].append(f'    {safe_name(arg1)} = {raw};')
                         else:
                             current['variables'][arg1] = 'int'
                             current['declarations'].append(f'    int {safe_name(arg1)} = {raw};')
-                    except ValueError:
+                    elif _is_float_lit:
+                        includes.add('#include <math.h>')
+                        if already:
+                            current['body'].append(f'    {safe_name(arg1)} = {raw};')
+                        else:
+                            current['variables'][arg1] = 'float'
+                            current['declarations'].append(f'    double {safe_name(arg1)} = {raw};')
+                    else:
                         includes.add('#include <string.h>')
                         if already:
                             current['body'].append(f'    strcpy({safe_name(arg1)}, "{raw}");')
@@ -357,7 +378,7 @@ def transpile(source):
                     current['body'].append(f'    printf("{unquote(arg1)}\\n");')
             elif arg1 and arg1 in current['variables']:
                 vt = current['variables'][arg1]
-                fmt = "%s" if vt == 'str' else "%d"
+                fmt = "%s" if vt == 'str' else ("%g" if vt == 'float' else "%d")
                 current['body'].append(f'    printf("{fmt}\\n", {emit_val(arg1, current["variables"])});')
             elif arg1:
                 current['body'].append(f'    printf("{unquote(arg1)}\\n");')
@@ -619,6 +640,46 @@ def transpile(source):
                     current['variables'][arg1] = 'int'
                     current['declarations'].append(f'    int {safe_name(arg1)};')
                 current['body'].append(f'    {safe_name(arg1)} = _mish_kbhit();')
+            elif arg2 and arg2.split()[0] in ('sqrt','sin','cos','tan','floor','ceil','fabs'):
+                _fparts = arg2.split(None, 1)
+                _fn, _fsrc = _fparts[0], (_fparts[1].strip() if len(_fparts) > 1 else '0')
+                includes.add('#include <math.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'float'
+                    current['declarations'].append(f'    double {safe_name(arg1)};')
+                sv = emit_val(_fsrc, current['variables']) if _fsrc in current['variables'] else _fsrc
+                current['body'].append(f'    {safe_name(arg1)} = {_fn}((double){sv});')
+            elif arg2 and arg2.startswith('atof '):
+                src = arg2[5:].strip()
+                includes.add('#include <stdlib.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'float'
+                    current['declarations'].append(f'    double {safe_name(arg1)};')
+                sv = emit_val(src, current['variables']) if src in current['variables'] else src
+                current['body'].append(f'    {safe_name(arg1)} = atof({sv});')
+            elif arg2 and arg2.startswith('ftoa '):
+                src = arg2[5:].strip()
+                includes.add('#include <stdio.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                sv = emit_val(src, current['variables']) if src in current['variables'] else src
+                current['body'].append(f'    sprintf({safe_name(arg1)}, "%g", (double){sv});')
+            elif arg2 and arg2.startswith('ftoi '):
+                src = arg2[5:].strip()
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                sv = emit_val(src, current['variables']) if src in current['variables'] else src
+                current['body'].append(f'    {safe_name(arg1)} = (int)({sv});')
+            elif arg2 and arg2.startswith('itof '):
+                src = arg2[5:].strip()
+                includes.add('#include <math.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'float'
+                    current['declarations'].append(f'    double {safe_name(arg1)};')
+                sv = emit_val(src, current['variables']) if src in current['variables'] else src
+                current['body'].append(f'    {safe_name(arg1)} = (double)({sv});')
             elif arg1 and arg1 in current['variables']:
                 includes.add('#include <stdio.h>')
                 if current['variables'][arg1] == 'int':
@@ -652,7 +713,7 @@ def transpile(source):
                 # determine lhs type — handles array elements like inames.i
                 var_base = var.split('.')[0] if '.' in var else var
                 lhs_type = var_type_of(var) or var_type_of(var_base)
-                lhs_is_int = lhs_type in ('int', 'int*') or (
+                lhs_is_int = lhs_type in ('int', 'int*', 'float') or (
                     '.' in var and var_type_of(var_base) == 'int[]')
                 if tail.startswith('contains '):
                     needle_raw = tail[9:].strip()

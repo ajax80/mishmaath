@@ -1,0 +1,18 @@
+#!/usr/bin/env mishmaath
+#link m
+0
+1 main
+4 stdout
+3 x 3.14
+3 y 2.0
+2 "pi is: %g" x
+6 z sqrt x
+2 "sqrt(pi): %g" z
+6 n ftoi x
+2 "ftoi(pi): %d" n
+6 f itof n
+2 "itof(3): %g" f
+3 s
+6 s ftoa x
+2 "ftoa(pi): %s" s
+7
