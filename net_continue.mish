@@ -1,0 +1,26 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+
+# continue: skip even numbers
+9 i 0 10
+6 r abs i
+8 r %2
+5 r == 0
+9 continue
+5
+2 i
+9
+
+# HTTP GET — public JSON API
+10 body get "https://httpbin.org/get"
+6 n len body
+2 "got %d bytes" n
+
+# HTTP POST
+10 resp post "https://httpbin.org/post" "hello=mishmaath"
+6 n len resp
+2 "post response %d bytes" n
+
+7

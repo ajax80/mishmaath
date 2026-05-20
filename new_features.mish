@@ -1,0 +1,46 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+
+# compound conditions
+3 x 7
+3 y 3
+5 x > 5 and y < 10
+2 both true
+5
+5 x < 0 or y > 0
+2 either true
+5
+
+# not
+5 not x 0
+2 x is nonzero
+5
+
+# for loop
+9 i 0 5
+2 i
+9
+
+# math builtins
+6 lo min x y
+6 hi max x y
+6 d abs y
+2 "min=%d max=%d abs=%d" lo hi d
+
+# itoa / atoi
+6 s itoa x
+8 s +" is a string"
+2 s
+6 n atoi "42"
+2 "parsed: %d" n
+
+# formatted print
+2 "x=%d y=%d" x y
+
+# shell exec
+10 now shell "date +%H:%M"
+2 "time: %s" now
+
+7

@@ -55,7 +55,8 @@ if has_shebang and not compile_flag and not out_name:
         tmp_c = tf.name
     with tempfile.NamedTemporaryFile(delete=False) as bf:
         tmp_bin = bf.name
-    result = subprocess.run(['gcc', tmp_c, '-o', tmp_bin])
+    gcc_flags = ['-lm']
+    result = subprocess.run(['gcc', tmp_c, '-o', tmp_bin] + gcc_flags)
     os.unlink(tmp_c)
     if result.returncode != 0:
         os.unlink(tmp_bin)
@@ -75,7 +76,8 @@ else:
         tf.write(c_code)
         tmp_c = tf.name
     binary = out_name or 'a.out'
-    result = subprocess.run(['gcc', tmp_c, '-o', binary])
+    gcc_flags = ['-lm']
+    result = subprocess.run(['gcc', tmp_c, '-o', binary] + gcc_flags)
     os.unlink(tmp_c)
     if result.returncode != 0:
         sys.exit(result.returncode)

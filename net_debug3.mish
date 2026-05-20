@@ -1,0 +1,14 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+10 r1 shell "curl -s https://httpbin.org/get | wc -c"
+2 "shell+wc: %s" r1
+10 r2 get "https://httpbin.org/get"
+6 n len r2
+2 "get len: %d" n
+5 n > 0
+6 r3 first r2
+2 "first word: %s" r3
+5
+7

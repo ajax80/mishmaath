@@ -1,0 +1,9 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+10 r1 shell "curl -s https://httpbin.org/get 2>&1 | wc -c"
+2 "wc: %s" r1
+10 r2 shell "echo test"
+2 "echo: %s" r2
+7

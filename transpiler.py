@@ -244,6 +244,25 @@ def transpile(source):
             if current is None:
                 continue
             includes.add('#include <stdio.h>')
+            if rest and rest.startswith('"'):
+                end = rest.find('"', 1)
+                if end != -1 and end + 1 < len(rest):
+                    fmt_str = rest[1:end]
+                    fargs_str = rest[end+1:].strip()
+                    if fargs_str:
+                        fargs = fargs_str.split()
+                        rendered = []
+                        for a in fargs:
+                            if a in current['variables']:
+                                rendered.append(emit_val(a, current['variables']))
+                            else:
+                                try:
+                                    int(a)
+                                    rendered.append(a)
+                                except ValueError:
+                                    rendered.append(f'"{a}"')
+                        current['body'].append(f'    printf("{fmt_str}\\n", {", ".join(rendered)});')
+                        continue
             if arg1 and '.' in arg1:
                 base = arg1.split('.')[0]
                 if base in current['variables'] or base in global_vars:
@@ -271,7 +290,8 @@ def transpile(source):
                     current['body'].append(f'    {safe_name(arg1)} = strlen({safe_name(src)});')
                 else:
                     current['variables'][arg1] = 'int'
-                    current['declarations'].append(f'    int {safe_name(arg1)} = strlen({safe_name(src)});')
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                    current['body'].append(f'    {safe_name(arg1)} = strlen({safe_name(src)});')
             elif arg2 and arg2.startswith('scan '):
                 src = arg2[5:].strip()
                 includes.add('#include <stdio.h>')
@@ -384,6 +404,68 @@ def transpile(source):
                     '    { strcpy(' + d + ',' + s + '); char *_bp=strchr(' + d + ',\'.\');'
                     ' if(_bp){ *_bp=\'[\'; strcat(' + d + ',"]\"); } }'
                 )
+            elif arg2 and arg2.startswith('min '):
+                parts = arg2[4:].split()
+                a, b = parts[0], (parts[1] if len(parts) > 1 else '0')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                av = emit_val(a, current['variables']) if a in current['variables'] else a
+                bv = emit_val(b, current['variables']) if b in current['variables'] else b
+                current['body'].append(f'    {safe_name(arg1)} = ({av} < {bv}) ? {av} : {bv};')
+            elif arg2 and arg2.startswith('max '):
+                parts = arg2[4:].split()
+                a, b = parts[0], (parts[1] if len(parts) > 1 else '0')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                av = emit_val(a, current['variables']) if a in current['variables'] else a
+                bv = emit_val(b, current['variables']) if b in current['variables'] else b
+                current['body'].append(f'    {safe_name(arg1)} = ({av} > {bv}) ? {av} : {bv};')
+            elif arg2 and arg2.startswith('abs '):
+                src = arg2[4:].strip()
+                includes.add('#include <stdlib.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                sv = emit_val(src, current['variables']) if src in current['variables'] else src
+                current['body'].append(f'    {safe_name(arg1)} = abs({sv});')
+            elif arg2 and arg2.startswith('rand '):
+                limit = arg2[5:].strip()
+                includes.add('#include <stdlib.h>')
+                includes.add('#include <time.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                lv = emit_val(limit, current['variables']) if limit in current['variables'] else limit
+                current['body'].append(f'    srand((unsigned)time(NULL));')
+                current['body'].append(f'    {safe_name(arg1)} = rand() % {lv};')
+            elif arg2 and arg2.startswith('itoa '):
+                src = arg2[5:].strip()
+                includes.add('#include <stdio.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                sv = emit_val(src, current['variables']) if src in current['variables'] else src
+                current['body'].append(f'    sprintf({safe_name(arg1)}, "%d", {sv});')
+            elif arg2 and arg2.startswith('atoi '):
+                src = arg2[5:].strip()
+                includes.add('#include <stdlib.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                sv = emit_val(src, current['variables']) if src in current['variables'] else src
+                current['body'].append(f'    {safe_name(arg1)} = atoi({sv});')
+            elif arg2 and arg2.startswith('pow '):
+                parts = arg2[4:].split()
+                a, b = parts[0], (parts[1] if len(parts) > 1 else '2')
+                includes.add('#include <math.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                av = emit_val(a, current['variables']) if a in current['variables'] else a
+                bv = emit_val(b, current['variables']) if b in current['variables'] else b
+                current['body'].append(f'    {safe_name(arg1)} = (int)pow((double){av}, (double){bv});')
             elif arg1 and arg1 in current['variables']:
                 includes.add('#include <stdio.h>')
                 if current['variables'][arg1] == 'int':
@@ -435,7 +517,7 @@ def transpile(source):
                     return f'strstr({safe_name(var)}, "{needle}") == NULL'
                 op_str = '=='
                 val_raw = tail
-                for cop in ('!=', '>=', '<=', '>', '<'):
+                for cop in ('!=', '>=', '<=', '>', '<', '=='):
                     if tail.startswith(cop):
                         op_str = cop
                         val_raw = tail[len(cop):].strip()
@@ -453,22 +535,51 @@ def transpile(source):
                         return f'strcmp({safe_name(var)}, {safe_name(val_raw)}) {eq}'
                     return f'strcmp({safe_name(var)}, "{val}") {eq}'
 
+            def make_compound(var, tail):
+                segs = re.split(r'\s+(and|or)\s+', tail)
+                if len(segs) == 1:
+                    return make_cond(var, tail)
+                conds = []
+                ops_list = []
+                first = True
+                for seg in segs:
+                    seg = seg.strip()
+                    if seg in ('and', 'or'):
+                        ops_list.append('&&' if seg == 'and' else '||')
+                    else:
+                        if first:
+                            conds.append(make_cond(var, seg))
+                            first = False
+                        else:
+                            p = seg.split(None, 1)
+                            conds.append(make_cond(p[0], p[1] if len(p) > 1 else '""'))
+                result = conds[0]
+                for i, lop in enumerate(ops_list):
+                    result += f' {lop} {conds[i+1]}'
+                return result
+
             if not arg1:
                 current['body'].append('    }')
+            elif arg1 == 'not' and arg2:
+                p = arg2.split(None, 1)
+                var2, tail2 = p[0], (p[1] if len(p) > 1 else '""')
+                current['body'].append(f'    if (!({make_cond(var2, tail2)})) {{')
             elif arg1 == 'else' and not arg2:
                 current['body'].append('    } else {')
             elif arg1 == 'else' and arg2:
                 parts = arg2.split(None, 1)
                 var2, tail2 = parts[0], (parts[1] if len(parts) > 1 else '""')
-                current['body'].append(f'    }} else if ({make_cond(var2, tail2)}) {{')
+                current['body'].append(f'    }} else if ({make_compound(var2, tail2)}) {{')
             elif arg2:
-                current['body'].append(f'    if ({make_cond(arg1, arg2)}) {{')
+                current['body'].append(f'    if ({make_compound(arg1, arg2)}) {{')
 
         elif op == 9:
             if current is None:
                 continue
             if arg1 == 'break':
                 current['body'].append('    break;')
+            elif arg1 == 'continue':
+                current['body'].append('    continue;')
             elif arg1 and arg2 == 'stdin':
                 includes.add('#include <stdio.h>')
                 includes.add('#include <string.h>')
@@ -491,14 +602,30 @@ def transpile(source):
                 current['body'].append(f'    while (fgets({safe_name(arg1)}, sizeof({safe_name(arg1)}), _fp)) {{')
                 current['body'].append(f'        {safe_name(arg1)}[strcspn({safe_name(arg1)}, "\\n")] = 0;')
             elif arg1 and arg2:
-                val = unquote(arg2)
-                if arg1 in current['variables'] and current['variables'][arg1] == 'int':
-                    current['loop_stack'].append('while')
-                    current['body'].append(f'    while ({safe_name(arg1)} < {val}) {{')
-                else:
-                    includes.add('#include <string.h>')
-                    current['loop_stack'].append('while')
-                    current['body'].append(f'    while (strcmp({safe_name(arg1)}, "{val}") != 0) {{')
+                parts2 = arg2.split()
+                is_for = False
+                if len(parts2) >= 2:
+                    try:
+                        start = int(parts2[0])
+                        limit = parts2[1]
+                        if arg1 not in current['variables']:
+                            current['variables'][arg1] = 'int'
+                            current['declarations'].append(f'    int {safe_name(arg1)};')
+                        lv = emit_val(limit, current['variables']) if limit in current['variables'] else limit
+                        current['loop_stack'].append('for')
+                        current['body'].append(f'    for ({safe_name(arg1)} = {start}; {safe_name(arg1)} < {lv}; {safe_name(arg1)}++) {{')
+                        is_for = True
+                    except ValueError:
+                        pass
+                if not is_for:
+                    val = unquote(arg2)
+                    if arg1 in current['variables'] and current['variables'][arg1] == 'int':
+                        current['loop_stack'].append('while')
+                        current['body'].append(f'    while ({safe_name(arg1)} < {val}) {{')
+                    else:
+                        includes.add('#include <string.h>')
+                        current['loop_stack'].append('while')
+                        current['body'].append(f'    while (strcmp({safe_name(arg1)}, "{val}") != 0) {{')
             else:
                 loop_type = current['loop_stack'].pop() if current['loop_stack'] else 'while'
                 if loop_type == 'file':
@@ -544,7 +671,46 @@ def transpile(source):
         elif op == 10:
             if current is None:
                 continue
-            if arg1 and arg2:
+            if arg1 and arg2 and arg2.startswith('get '):
+                url_raw = arg2[4:].strip()
+                includes.add('#include <stdio.h>')
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                d = safe_name(arg1)
+                if url_raw.startswith('"'):
+                    url = unquote(url_raw)
+                    current['body'].append(f'    {{ FILE *_pp = popen("curl -s {url}", "r"); {d}[0]=0; if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen({d})+strlen(_ln)<65535)strcat({d},_ln); }} pclose(_pp); }} }}')
+                else:
+                    u = emit_val(url_raw, current['variables']) if url_raw in current['variables'] else safe_name(url_raw)
+                    current['body'].append(f'    {{ char _gc[4096]; snprintf(_gc,sizeof(_gc),"curl -s %s",{u}); FILE *_pp=popen(_gc,"r"); {d}[0]=0; if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen({d})+strlen(_ln)<65535)strcat({d},_ln); }} pclose(_pp); }} }}')
+            elif arg1 and arg2 and arg2.startswith('post '):
+                rest2 = arg2[5:].strip()
+                parts2 = rest2.split(None, 1)
+                url_raw = parts2[0]
+                body_raw = parts2[1] if len(parts2) > 1 else '""'
+                includes.add('#include <stdio.h>')
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                d = safe_name(arg1)
+                url = unquote(url_raw) if url_raw.startswith('"') else None
+                body = unquote(body_raw) if body_raw.startswith('"') else None
+                url_expr = f'"{url}"' if url else (emit_val(url_raw, current['variables']) if url_raw in current['variables'] else safe_name(url_raw))
+                body_expr = f'"{body}"' if body else (emit_val(body_raw, current['variables']) if body_raw in current['variables'] else safe_name(body_raw))
+                current['body'].append(f'    {{ char _pc[8192]; snprintf(_pc,sizeof(_pc),"curl -s -X POST -d \'%s\' %s",{body_expr},{url_expr}); FILE *_pp=popen(_pc,"r"); {d}[0]=0; if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen({d})+strlen(_ln)<65535)strcat({d},_ln); }} pclose(_pp); }} }}')
+            elif arg1 and arg2 and arg2.startswith('shell '):
+                cmd = unquote(arg2[6:].strip())
+                includes.add('#include <stdio.h>')
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[4096];')
+                d = safe_name(arg1)
+                current['body'].append(f'    {{ FILE *_pp = popen("{cmd}", "r"); {d}[0]=0; if(_pp){{ fgets({d}, sizeof({d}), _pp); {d}[strcspn({d}, "\\n")]=0; pclose(_pp); }} }}')
+            elif arg1 and arg2:
                 filename = unquote(arg2)
                 includes.add('#include <stdio.h>')
                 if arg1 in current['variables']:
