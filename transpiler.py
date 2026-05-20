@@ -1,6 +1,41 @@
 import sys
 import re
 
+_JSON_HELPER = (
+    'static void _mish_json_get(const char *js,const char *key,char *out,int sz){\n'
+    '    char nd[256]; snprintf(nd,sizeof(nd),"\\"%s\\"",key);\n'
+    '    const char *p=js;\n'
+    '    while((p=strstr(p,nd))!=NULL){\n'
+    '        const char *q=p+strlen(nd);\n'
+    '        while(*q==32||*q==9||*q==10||*q==13)q++;\n'
+    '        if(*q!=58){p++;continue;}q++;\n'
+    '        while(*q==32||*q==9||*q==10||*q==13)q++;\n'
+    '        int i=0;\n'
+    '        if(*q==34){q++;while(*q&&*q!=34&&i<sz-1){\n'
+    '            if(*q==92&&*(q+1)){q++;out[i++]=(*q==34)?34:(*q==110)?10:(*q==116)?9:*q;}\n'
+    '            else out[i++]=*q;q++;\n'
+    '        }}else{while(*q&&*q!=44&&*q!=125&&*q!=93&&*q!=10&&i<sz-1)out[i++]=*q++;\n'
+    '            while(i>0&&(out[i-1]==32||out[i-1]==13))i--;}\n'
+    '        out[i]=0;return;\n'
+    '    }\n'
+    '    out[0]=0;\n'
+    '}'
+)
+
+_HTTP_HELPER = (
+    'static void _mish_http_method(const char *r,char *o,int sz){'
+    'int i=0;while(*r&&*r!=32&&i<sz-1)o[i++]=*r++;o[i]=0;}\n'
+    'static void _mish_http_path(const char *r,char *o,int sz){'
+    'const char *p=strchr(r,32);if(!p){o[0]=0;return;}p++;'
+    'int i=0;while(*p&&*p!=32&&i<sz-1)o[i++]=*p++;o[i]=0;}\n'
+    'static void _mish_http_body(const char *r,char *o,int sz){'
+    'const char *p=strstr(r,"\\r\\n\\r\\n");'
+    'if(!p)p=strstr(r,"\\n\\n");'
+    'if(!p){o[0]=0;return;}'
+    'p+=(p[0]==13)?4:2;'
+    'int i=0;while(*p&&i<sz-1)o[i++]=*p++;o[i]=0;}'
+)
+
 C_RESERVED = {'void','int','char','float','double','return','if','else','while',
                'for','do','switch','case','break','continue','struct','union',
                'enum','typedef','static','extern','const','sizeof','goto','default'}
@@ -26,8 +61,16 @@ def emit_val(n, variables):
     return safe_name(n)
 
 def transpile(source):
-    lines = [l.strip() for l in source.strip().splitlines() if l.strip() and not l.strip().startswith('#')]
+    link_flags = []
+    lines = []
+    for _l in source.strip().splitlines():
+        _ls = _l.strip()
+        if _ls.startswith('#link '):
+            link_flags.append('-l' + _ls[6:].strip())
+        elif _ls and not _ls.startswith('#'):
+            lines.append(_ls)
     includes = set()
+    helpers = set()
     functions = []
     globals_ = []
     global_vars = {}
@@ -64,7 +107,12 @@ def transpile(source):
             arg2 = None
 
         if op == 0:
-            pass
+            if rest and rest.startswith('c '):
+                raw = rest[2:].strip()
+                if current is not None:
+                    current['body'].append(f'    {raw}')
+                else:
+                    globals_.append(raw)
 
         elif op == 1:
             if rest:
@@ -404,6 +452,58 @@ def transpile(source):
                     '    { strcpy(' + d + ',' + s + '); char *_bp=strchr(' + d + ',\'.\');'
                     ' if(_bp){ *_bp=\'[\'; strcat(' + d + ',"]\"); } }'
                 )
+            elif arg2 and arg2.startswith('json '):
+                helpers.add('json')
+                includes.add('#include <string.h>')
+                includes.add('#include <stdio.h>')
+                rj = arg2[5:].strip().split(None, 1)
+                key = unquote(rj[0])
+                src = rj[1] if len(rj) > 1 else ''
+                sv = emit_val(src, current['variables']) if src in current['variables'] else safe_name(src)
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[4096];')
+                current['body'].append(f'    _mish_json_get({sv}, "{key}", {safe_name(arg1)}, sizeof({safe_name(arg1)}));')
+            elif arg2 and arg2.startswith('json_num '):
+                helpers.add('json')
+                includes.add('#include <string.h>')
+                includes.add('#include <stdio.h>')
+                includes.add('#include <stdlib.h>')
+                rj = arg2[9:].strip().split(None, 1)
+                key = unquote(rj[0])
+                src = rj[1] if len(rj) > 1 else ''
+                sv = emit_val(src, current['variables']) if src in current['variables'] else safe_name(src)
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                current['body'].append(f'    {{ char _jt[64]; _mish_json_get({sv}, "{key}", _jt, 64); {safe_name(arg1)} = atoi(_jt); }}')
+            elif arg2 and arg2.startswith('http_method '):
+                helpers.add('http')
+                includes.add('#include <string.h>')
+                src = arg2[12:].strip()
+                sv = emit_val(src, current['variables']) if src in current['variables'] else safe_name(src)
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[32];')
+                current['body'].append(f'    _mish_http_method({sv}, {safe_name(arg1)}, sizeof({safe_name(arg1)}));')
+            elif arg2 and arg2.startswith('http_path '):
+                helpers.add('http')
+                includes.add('#include <string.h>')
+                src = arg2[10:].strip()
+                sv = emit_val(src, current['variables']) if src in current['variables'] else safe_name(src)
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[1024];')
+                current['body'].append(f'    _mish_http_path({sv}, {safe_name(arg1)}, sizeof({safe_name(arg1)}));')
+            elif arg2 and arg2.startswith('http_body '):
+                helpers.add('http')
+                includes.add('#include <string.h>')
+                src = arg2[10:].strip()
+                sv = emit_val(src, current['variables']) if src in current['variables'] else safe_name(src)
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                current['body'].append(f'    _mish_http_body({sv}, {safe_name(arg1)}, sizeof({safe_name(arg1)}));')
             elif arg2 and arg2.startswith('min '):
                 parts = arg2[4:].split()
                 a, b = parts[0], (parts[1] if len(parts) > 1 else '0')
@@ -601,6 +701,17 @@ def transpile(source):
                 current['body'].append(f'    FILE *_fp = fopen("{filename}", "r");')
                 current['body'].append(f'    while (fgets({safe_name(arg1)}, sizeof({safe_name(arg1)}), _fp)) {{')
                 current['body'].append(f'        {safe_name(arg1)}[strcspn({safe_name(arg1)}, "\\n")] = 0;')
+            elif arg1 and arg2 and arg2.startswith('accept '):
+                server_var = arg2[7:].strip()
+                includes.add('#include <sys/socket.h>')
+                includes.add('#include <netinet/in.h>')
+                includes.add('#include <unistd.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                sv = emit_val(server_var, current['variables']) if server_var in current['variables'] else safe_name(server_var)
+                current['loop_stack'].append('accept')
+                current['body'].append(f'    while (({safe_name(arg1)} = accept({sv}, NULL, NULL)) >= 0) {{')
             elif arg1 and arg2:
                 parts2 = arg2.split()
                 is_for = False
@@ -671,7 +782,65 @@ def transpile(source):
         elif op == 10:
             if current is None:
                 continue
-            if arg1 and arg2 and arg2.startswith('get '):
+            if arg1 and arg2 and arg2.startswith('listen '):
+                port_raw = arg2[7:].strip()
+                includes.add('#include <sys/socket.h>')
+                includes.add('#include <netinet/in.h>')
+                includes.add('#include <arpa/inet.h>')
+                includes.add('#include <unistd.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                port_expr = emit_val(port_raw, current['variables']) if port_raw in current['variables'] else port_raw
+                d = safe_name(arg1)
+                current['body'].append(f'    {{ int _s=socket(AF_INET,SOCK_STREAM,0); int _opt=1; setsockopt(_s,SOL_SOCKET,SO_REUSEADDR,&_opt,sizeof(_opt)); struct sockaddr_in _a; memset(&_a,0,sizeof(_a)); _a.sin_family=AF_INET; _a.sin_addr.s_addr=INADDR_ANY; _a.sin_port=htons({port_expr}); bind(_s,(struct sockaddr*)&_a,sizeof(_a)); listen(_s,10); {d}=_s; }}')
+                includes.add('#include <string.h>')
+            elif arg1 and arg2 and arg2.startswith('recv '):
+                client_raw = arg2[5:].strip()
+                includes.add('#include <unistd.h>')
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                cv = emit_val(client_raw, current['variables']) if client_raw in current['variables'] else safe_name(client_raw)
+                d = safe_name(arg1)
+                current['body'].append(f'    {{ ssize_t _rn=read({cv},{d},sizeof({d})-1); {d}[_rn>0?_rn:0]=0; }}')
+            elif arg1 and arg2 and arg2.startswith('write '):
+                resp_raw = arg2[6:].strip()
+                includes.add('#include <unistd.h>')
+                includes.add('#include <string.h>')
+                cv = emit_val(arg1, current['variables']) if arg1 in current['variables'] else safe_name(arg1)
+                rv = emit_val(resp_raw, current['variables']) if resp_raw in current['variables'] else f'"{resp_raw}"'
+                current['body'].append(f'    write({cv}, {rv}, strlen({rv}));')
+            elif arg1 and arg2 == 'close':
+                includes.add('#include <unistd.h>')
+                cv = emit_val(arg1, current['variables']) if arg1 in current['variables'] else safe_name(arg1)
+                current['body'].append(f'    close({cv});')
+            elif arg1 and arg2 and arg2.startswith('http_ok '):
+                resp_raw = arg2[8:].strip()
+                includes.add('#include <unistd.h>')
+                includes.add('#include <string.h>')
+                includes.add('#include <stdio.h>')
+                cv = emit_val(arg1, current['variables']) if arg1 in current['variables'] else safe_name(arg1)
+                rv = emit_val(resp_raw, current['variables']) if resp_raw in current['variables'] else f'"{resp_raw}"'
+                current['body'].append(f'    {{ char _hdr[512]; snprintf(_hdr,sizeof(_hdr),"HTTP/1.1 200 OK\\r\\nContent-Length: %zu\\r\\nContent-Type: text/plain\\r\\nConnection: close\\r\\n\\r\\n",strlen({rv})); write({cv},_hdr,strlen(_hdr)); write({cv},{rv},strlen({rv})); }}')
+            elif arg1 and arg2 and arg2.startswith('http_json '):
+                resp_raw = arg2[10:].strip()
+                includes.add('#include <unistd.h>')
+                includes.add('#include <string.h>')
+                includes.add('#include <stdio.h>')
+                cv = emit_val(arg1, current['variables']) if arg1 in current['variables'] else safe_name(arg1)
+                rv = emit_val(resp_raw, current['variables']) if resp_raw in current['variables'] else f'"{resp_raw}"'
+                current['body'].append(f'    {{ char _hdr[512]; snprintf(_hdr,sizeof(_hdr),"HTTP/1.1 200 OK\\r\\nContent-Length: %zu\\r\\nContent-Type: application/json\\r\\nConnection: close\\r\\n\\r\\n",strlen({rv})); write({cv},_hdr,strlen(_hdr)); write({cv},{rv},strlen({rv})); }}')
+            elif arg1 and arg2 == 'http_404':
+                includes.add('#include <unistd.h>')
+                cv = emit_val(arg1, current['variables']) if arg1 in current['variables'] else safe_name(arg1)
+                current['body'].append(f'    write({cv},"HTTP/1.1 404 Not Found\\r\\nContent-Length: 0\\r\\nConnection: close\\r\\n\\r\\n",74);')
+            elif arg1 and arg2 == 'http_500':
+                includes.add('#include <unistd.h>')
+                cv = emit_val(arg1, current['variables']) if arg1 in current['variables'] else safe_name(arg1)
+                current['body'].append(f'    write({cv},"HTTP/1.1 500 Internal Server Error\\r\\nContent-Length: 0\\r\\nConnection: close\\r\\n\\r\\n",84);')
+            elif arg1 and arg2 and arg2.startswith('get '):
                 url_raw = arg2[4:].strip()
                 includes.add('#include <stdio.h>')
                 includes.add('#include <string.h>')
@@ -753,8 +922,17 @@ def transpile(source):
         func['variables'].update({k: v for k, v in global_vars.items() if k not in func['variables']})
 
     c = []
+    if link_flags:
+        c.append('/* MISHMAATH_LINK: ' + ' '.join(link_flags) + ' */')
     for inc in sorted(includes):
         c.append(inc)
+
+    if 'json' in helpers:
+        c.append('')
+        c.append(_JSON_HELPER)
+    if 'http' in helpers:
+        c.append('')
+        c.append(_HTTP_HELPER)
 
     if globals_:
         c.append('')

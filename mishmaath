@@ -49,13 +49,19 @@ with open(src_file) as f:
 has_shebang = source.startswith('#!')
 c_code = transpile(source)
 
+import re as _re
+_link_extra = _re.findall(r'/\* MISHMAATH_LINK: (.*?) \*/', c_code)
+_extra_flags = []
+for _m in _link_extra:
+    _extra_flags.extend(_m.split())
+
 if has_shebang and not compile_flag and not out_name:
     with tempfile.NamedTemporaryFile(suffix='.c', mode='w', delete=False) as tf:
         tf.write(c_code)
         tmp_c = tf.name
     with tempfile.NamedTemporaryFile(delete=False) as bf:
         tmp_bin = bf.name
-    gcc_flags = ['-lm']
+    gcc_flags = ['-lm'] + _extra_flags
     result = subprocess.run(['gcc', tmp_c, '-o', tmp_bin] + gcc_flags)
     os.unlink(tmp_c)
     if result.returncode != 0:
@@ -76,7 +82,7 @@ else:
         tf.write(c_code)
         tmp_c = tf.name
     binary = out_name or 'a.out'
-    gcc_flags = ['-lm']
+    gcc_flags = ['-lm'] + _extra_flags
     result = subprocess.run(['gcc', tmp_c, '-o', binary] + gcc_flags)
     os.unlink(tmp_c)
     if result.returncode != 0:

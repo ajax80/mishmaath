@@ -1,0 +1,8 @@
+#!/usr/bin/env mishmaath
+#link m
+0
+1 main
+4 stdout
+0 c double x = 3.14159;
+0 c printf("pi*2 = %.4f\n", x * 2);
+7

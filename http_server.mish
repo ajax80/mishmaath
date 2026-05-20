@@ -1,0 +1,18 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+10 server listen 7474
+2 "mishmaath server on :7474"
+9 client accept server
+  10 req recv client
+  6 method http_method req
+  6 path http_path req
+  3 resp "OK: "
+  8 resp +method
+  8 resp +" "
+  8 resp +path
+  10 client http_ok resp
+  10 client close
+9
+7

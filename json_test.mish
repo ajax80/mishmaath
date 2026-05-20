@@ -1,0 +1,10 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+10 body get "https://httpbin.org/get"
+6 origin json "origin" body
+6 url json "url" body
+2 "origin: %s" origin
+2 "url: %s" url
+7
