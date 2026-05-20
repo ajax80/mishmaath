@@ -804,6 +804,26 @@ def transpile(source):
                 lv = emit_val(limit, current['variables']) if limit in current['variables'] else limit
                 current['body'].append(f'    srand((unsigned)time(NULL));')
                 current['body'].append(f'    {safe_name(arg1)} = rand() % {lv};')
+            elif arg2 and arg2.startswith('fmt '):
+                includes.add('#include <stdio.h>')
+                _fp = arg2[4:].strip()
+                if _fp.startswith('"'):
+                    _end = _fp.find('"', 1)
+                    _fmt_str = _fp[1:_end]
+                    _args_str = _fp[_end+1:].strip()
+                    _fargs = _args_str.split() if _args_str else []
+                else:
+                    _fparts = _fp.split()
+                    _fmt_str = _fparts[0]
+                    _fargs = _fparts[1:]
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[1024];')
+                _rendered = [emit_val(a, current['variables']) if a in current['variables'] else a for a in _fargs]
+                if _rendered:
+                    current['body'].append(f'    sprintf({safe_name(arg1)}, "{_fmt_str}", {", ".join(_rendered)});')
+                else:
+                    current['body'].append(f'    sprintf({safe_name(arg1)}, "{_fmt_str}");')
             elif arg2 and arg2.startswith('itoa '):
                 src = arg2[5:].strip()
                 includes.add('#include <stdio.h>')
@@ -1069,12 +1089,20 @@ def transpile(source):
                         try:
                             start = int(parts2[0])
                             limit = parts2[1]
+                            step = int(parts2[2]) if len(parts2) > 2 else 1
                             if arg1 not in current['variables']:
                                 current['variables'][arg1] = 'int'
                                 current['declarations'].append(f'    int {safe_name(arg1)};')
                             lv = emit_val(limit, current['variables']) if limit in current['variables'] else limit
                             current['loop_stack'].append('for')
-                            current['body'].append(f'    for ({safe_name(arg1)} = {start}; {safe_name(arg1)} < {lv}; {safe_name(arg1)}++) {{')
+                            v = safe_name(arg1)
+                            if step < 0:
+                                inc = f'{v}--' if step == -1 else f'{v} += {step}'
+                                current['body'].append(f'    for ({v} = {start}; {v} > {lv}; {inc}) {{')
+                            elif step > 1:
+                                current['body'].append(f'    for ({v} = {start}; {v} < {lv}; {v} += {step}) {{')
+                            else:
+                                current['body'].append(f'    for ({v} = {start}; {v} < {lv}; {v}++) {{')
                             is_for = True
                         except ValueError:
                             pass
