@@ -19,6 +19,30 @@ _JSON_HELPER = (
     '        out[i]=0;return;\n'
     '    }\n'
     '    out[0]=0;\n'
+    '}\n'
+    'static void _mish_json_set_str(char *o,const char *k,const char *v,int sz){\n'
+    '    int l=strlen(o),hc=(l>2); o[l-1]=0;\n'
+    '    if(hc)strncat(o,",",sz-strlen(o)-1);\n'
+    '    char t[8192]; snprintf(t,sizeof(t),"\\"%s\\":\\"%s\\"}",k,v);\n'
+    '    strncat(o,t,sz-strlen(o)-1);\n'
+    '}\n'
+    'static void _mish_json_set_num(char *o,const char *k,long long v,int sz){\n'
+    '    int l=strlen(o),hc=(l>2); o[l-1]=0;\n'
+    '    if(hc)strncat(o,",",sz-strlen(o)-1);\n'
+    '    char t[256]; snprintf(t,sizeof(t),"\\"%s\\":%lld}",k,v);\n'
+    '    strncat(o,t,sz-strlen(o)-1);\n'
+    '}\n'
+    'static void _mish_json_push_str(char *o,const char *v,int sz){\n'
+    '    int l=strlen(o),hc=(l>2); o[l-1]=0;\n'
+    '    if(hc)strncat(o,",",sz-strlen(o)-1);\n'
+    '    char t[8192]; snprintf(t,sizeof(t),"\\"%s\\"]",v);\n'
+    '    strncat(o,t,sz-strlen(o)-1);\n'
+    '}\n'
+    'static void _mish_json_push_num(char *o,long long v,int sz){\n'
+    '    int l=strlen(o),hc=(l>2); o[l-1]=0;\n'
+    '    if(hc)strncat(o,",",sz-strlen(o)-1);\n'
+    '    char t[64]; snprintf(t,sizeof(t),"%lld]",v);\n'
+    '    strncat(o,t,sz-strlen(o)-1);\n'
     '}'
 )
 
@@ -527,6 +551,74 @@ def transpile(source):
                     '    { strcpy(' + d + ',' + s + '); char *_bp=strchr(' + d + ',\'.\');'
                     ' if(_bp){ *_bp=\'[\'; strcat(' + d + ',"]\"); } }'
                 )
+            elif arg2 == 'json_obj':
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                current['body'].append(f'    strcpy({safe_name(arg1)}, "{{}}");')
+            elif arg2 == 'json_arr':
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                current['body'].append(f'    strcpy({safe_name(arg1)}, "[]");')
+            elif arg2 and arg2.startswith('json_set '):
+                helpers.add('json')
+                includes.add('#include <string.h>')
+                _rjs = arg2[9:].strip().split(None, 2)
+                _ov = safe_name(_rjs[0]) if _rjs else safe_name(arg1)
+                _key = unquote(_rjs[1]) if len(_rjs) > 1 else 'key'
+                _vraw = _rjs[2] if len(_rjs) > 2 else '""'
+                _vv = (f'"{unquote(_vraw)}"' if _vraw.startswith('"')
+                       else (emit_val(_vraw, current['variables']) if _vraw in current['variables'] else safe_name(_vraw)))
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                current['body'].append(f'    _mish_json_set_str({_ov}, "{_key}", {_vv}, sizeof({_ov}));')
+                if arg1 != _rjs[0]:
+                    current['body'].append(f'    strcpy({safe_name(arg1)}, {_ov});')
+            elif arg2 and arg2.startswith('json_set_num '):
+                helpers.add('json')
+                includes.add('#include <string.h>')
+                _rjs = arg2[13:].strip().split(None, 2)
+                _ov = safe_name(_rjs[0]) if _rjs else safe_name(arg1)
+                _key = unquote(_rjs[1]) if len(_rjs) > 1 else 'key'
+                _vraw = _rjs[2] if len(_rjs) > 2 else '0'
+                _vv = emit_val(_vraw, current['variables']) if _vraw in current['variables'] else _vraw
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                current['body'].append(f'    _mish_json_set_num({_ov}, "{_key}", (long long){_vv}, sizeof({_ov}));')
+                if arg1 != _rjs[0]:
+                    current['body'].append(f'    strcpy({safe_name(arg1)}, {_ov});')
+            elif arg2 and arg2.startswith('json_push '):
+                helpers.add('json')
+                includes.add('#include <string.h>')
+                _rjs = arg2[10:].strip().split(None, 1)
+                _ov = safe_name(_rjs[0]) if _rjs else safe_name(arg1)
+                _vraw = _rjs[1] if len(_rjs) > 1 else '""'
+                _vv = (f'"{unquote(_vraw)}"' if _vraw.startswith('"')
+                       else (emit_val(_vraw, current['variables']) if _vraw in current['variables'] else safe_name(_vraw)))
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                current['body'].append(f'    _mish_json_push_str({_ov}, {_vv}, sizeof({_ov}));')
+                if arg1 != _rjs[0]:
+                    current['body'].append(f'    strcpy({safe_name(arg1)}, {_ov});')
+            elif arg2 and arg2.startswith('json_push_num '):
+                helpers.add('json')
+                includes.add('#include <string.h>')
+                _rjs = arg2[14:].strip().split(None, 1)
+                _ov = safe_name(_rjs[0]) if _rjs else safe_name(arg1)
+                _vraw = _rjs[1] if len(_rjs) > 1 else '0'
+                _vv = emit_val(_vraw, current['variables']) if _vraw in current['variables'] else _vraw
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                current['body'].append(f'    _mish_json_push_num({_ov}, (long long){_vv}, sizeof({_ov}));')
+                if arg1 != _rjs[0]:
+                    current['body'].append(f'    strcpy({safe_name(arg1)}, {_ov});')
             elif arg2 and arg2.startswith('json '):
                 helpers.add('json')
                 includes.add('#include <string.h>')

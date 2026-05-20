@@ -2,9 +2,16 @@
 0
 1 main
 4 stdout
-10 body get "https://httpbin.org/get"
-6 origin json "origin" body
-6 url json "url" body
-2 "origin: %s" origin
-2 "url: %s" url
+3 name "mishmaath"
+3 version 1
+6 j json_obj
+6 j json_set j "name" name
+6 j json_set_num j "version" version
+6 j json_set j "status" "alive"
+2 j
+6 arr json_arr
+6 arr json_push arr "one"
+6 arr json_push arr "two"
+6 arr json_push_num arr 3
+2 arr
 7
