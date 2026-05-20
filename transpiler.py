@@ -1542,6 +1542,45 @@ def transpile(source):
                 mname = arg2.strip()
                 mvar = f'_mish_mtx_{safe_name(mname)}'
                 current['body'].append(f'    pthread_mutex_unlock(&{mvar});')
+            elif arg1 and arg2 and arg2.startswith('shell_all '):
+                cmd_raw = arg2[10:].strip()
+                includes.add('#include <stdio.h>')
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                d = safe_name(arg1)
+                if cmd_raw.startswith('"'):
+                    cmd = unquote(cmd_raw)
+                    current['body'].append(f'    {{ static char _sa[65536]; _sa[0]=0; FILE *_pp=popen("{cmd}","r"); if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen(_sa)+strlen(_ln)<65535)strcat(_sa,_ln); }} int _src=pclose(_pp); _err=(_src!=0)?1:0; }} else _err=1; strncpy({d},_sa,sizeof({d})-1); {d}[sizeof({d})-1]=0; }}')
+                else:
+                    cv = emit_val(cmd_raw, current['variables']) if cmd_raw in current['variables'] else safe_name(cmd_raw)
+                    current['body'].append(f'    {{ static char _sa[65536]; _sa[0]=0; char _gc[4096]; snprintf(_gc,sizeof(_gc),"%s",{cv}); FILE *_pp=popen(_gc,"r"); if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen(_sa)+strlen(_ln)<65535)strcat(_sa,_ln); }} int _src=pclose(_pp); _err=(_src!=0)?1:0; }} else _err=1; strncpy({d},_sa,sizeof({d})-1); {d}[sizeof({d})-1]=0; }}')
+            elif arg1 and arg2 and arg2.startswith('pipe '):
+                _pipr = arg2[5:].strip()
+                if _pipr.startswith('"'):
+                    _pqend = _pipr.find('"', 1)
+                    cmd_raw = _pipr[:_pqend+1] if _pqend >= 0 else _pipr
+                    input_raw = _pipr[_pqend+1:].strip() if _pqend >= 0 else '""'
+                else:
+                    _pip = _pipr.split(None, 1)
+                    cmd_raw = _pip[0]
+                    input_raw = _pip[1].strip() if len(_pip) > 1 else '""'
+                includes.add('#include <stdio.h>')
+                includes.add('#include <string.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                d = safe_name(arg1)
+                cmd = unquote(cmd_raw) if cmd_raw.startswith('"') else None
+                cmd_expr = f'"{cmd}"' if cmd else (emit_val(cmd_raw, current['variables']) if cmd_raw in current['variables'] else safe_name(cmd_raw))
+                inv = (f'"{unquote(input_raw)}"' if input_raw.startswith('"')
+                       else (emit_val(input_raw, current['variables']) if input_raw in current['variables'] else safe_name(input_raw)))
+                current['body'].append(
+                    f'    {{ static char _pa[65536]; _pa[0]=0; char _pcmd[4096]; snprintf(_pcmd,sizeof(_pcmd),"printf \'%%s\' \'%s\' | %s",{inv},{cmd_expr});'
+                    f' FILE *_pp=popen(_pcmd,"r"); if(_pp){{ char _ln[4096]; while(fgets(_ln,sizeof(_ln),_pp)){{ if(strlen(_pa)+strlen(_ln)<65535)strcat(_pa,_ln); }} int _src=pclose(_pp); _err=(_src!=0)?1:0; }} else _err=1;'
+                    f' strncpy({d},_pa,sizeof({d})-1); {d}[sizeof({d})-1]=0; }}'
+                )
             elif arg1 and arg2:
                 filename = unquote(arg2)
                 includes.add('#include <stdio.h>')

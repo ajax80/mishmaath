@@ -1,0 +1,12 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+3 out
+10 out shell_all "ls *.mish"
+2 "all mish files:\n%s" out
+3 result
+3 input "hello mishmaath"
+10 result pipe "tr a-z A-Z" input
+2 "piped: %s" result
+7

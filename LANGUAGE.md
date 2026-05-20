@@ -264,7 +264,10 @@ compound conditions:
 10 client close       # close connection
 10 body get "url"     # HTTP GET, body = response
 10 body post "url" d  # HTTP POST with data d
-10 out shell "cmd"    # run shell command, capture first line
+10 out shell "cmd"        # run shell command, capture first line
+10 out shell_all "cmd"    # run shell command, capture all output
+10 out shell_all cmd      # cmd can be a variable
+10 out pipe "cmd" input   # pipe input variable into cmd, capture all output
 ```
 
 **file**
