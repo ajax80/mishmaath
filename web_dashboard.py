@@ -7,6 +7,7 @@ import uvicorn
 
 sys.path.insert(0, os.path.dirname(__file__))
 from schema_eval import Eli, Genesis
+from evaluator_core import score_sequence, yield_tier, YIELD_NAMES
 
 MEANINGS = {
     0: ("void",       "before sound, before thought. the ground that holds everything else."),
@@ -278,6 +279,14 @@ def handle_command(msg):
         state['saved'] = True
         threading.Timer(1.5, lambda: state.update({'saved': False})).start()
 
+def _compute_yield(history):
+    thoughts = [h['w'] for h in history if 'w' in h]
+    if not thoughts:
+        return {'tier': 0, 'score': 0.0, 'label': YIELD_NAMES[0]}
+    s = score_sequence(thoughts)
+    t = yield_tier(s)
+    return {'tier': t, 'score': round(s, 3), 'label': YIELD_NAMES[t]}
+
 def get_snapshot():
     e = state['eli']
     wav  = state['waveform']
@@ -291,6 +300,7 @@ def get_snapshot():
         'features':      {k: round(v, 5) for k, v in f.items()},
         'waveform':      [round(v / peak, 4) for v in wav],
         'history':       list(state['history']),
+        'yield':         _compute_yield(state['history']),
         'gains':         state['gains'],
         'selected':      state['selected'],
         'saved':         state['saved'],
@@ -548,6 +558,11 @@ canvas{display:block;width:100%;height:100%}
       <div class="ptitle" style="padding:0 0 5px;border:none">eli</div>
       <div id="elirows"></div>
     </div>
+    <div class="yieldpanel">
+      <div class="ptitle" style="padding:0 0 5px;border:none">yield — matthew 13:8</div>
+      <div class="estatus" id="yieldtier">—</div>
+      <div class="edetail" id="yieldlabel" style="margin-top:4px;font-size:9px;color:var(--muted)"></div>
+    </div>
     <div class="ptitle">history</div>
     <div class="hpanel" id="hist" role="log" aria-live="polite" aria-label="Schema weight history"></div>
   </div>
@@ -682,6 +697,16 @@ function update(s){
   document.getElementById('ep').textContent='p '+(f.periodicity||0).toFixed(2);
   document.getElementById('es').textContent='s '+(f.stability||0).toFixed(2);
   document.getElementById('ef').textContent='f '+(f.flatness||0).toFixed(2);
+
+  // yield tier
+  if (s.yield) {
+    const yt = document.getElementById('yieldtier');
+    const yl = document.getElementById('yieldlabel');
+    const tier = s.yield.tier;
+    yt.textContent = tier === 0 ? '—' : tier + '-fold';
+    yt.className = 'estatus ' + (tier===100?'':tier===60?'y':tier===30?'d':'d');
+    yl.textContent = s.yield.label;
+  }
 
   // eli
   const e=s.eli;

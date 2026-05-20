@@ -27,6 +27,20 @@ WATER        = {76}
 
 RESERVE_ACTUAL_FLOOR = 0.30
 
+# Matthew 13:8 — same seed, different ground, different return
+# 100:60:30 reduces to 10:6:3 — the reach, the comfort, the divine
+# every yield in the parable passes through 10
+YIELD_30  = 0.30   # 3 × 10 — divine × reach — viable, minimum good ground
+YIELD_60  = 0.60   # 6 × 10 — comfort × reach — solid, good ground
+YIELD_100 = 0.90   # 10 × 10 — reach × reach — peak, full return
+
+YIELD_NAMES = {
+    100: "hundredfold — full return. peak ground.",
+    60:  "sixtyfold — solid return. good ground.",
+    30:  "thirtyfold — viable return. minimum good ground.",
+    0:   "no yield — seed did not land.",
+}
+
 NAMES = {
     0: "void",      1: "source",     2: "speak",       3: "divine",
     4: "door",      5: "friction",   6: "comfort",     7: "settled",
@@ -115,3 +129,48 @@ def joy_check(thought, context):
         if not pathway(thought, context):
             return False
     return thought in JOY_WEIGHTS or thought == 88
+
+
+def score_sequence(thoughts, context=None):
+    """Reduce a sequence of schema values to a 0.0–1.0 score.
+
+    Four checks per token: flow coherence, joy, eleanor not alarmed,
+    resistor not locked. Terminal pathway check worth one extra point.
+    """
+    if not thoughts:
+        return 0.0
+    state = SchemaState()
+    hits = 0
+    total = 0
+    prior = None
+    for t in thoughts:
+        state.push_eleanor(t)
+        state.push_resistor(t)
+        if flows_check(t, prior):
+            hits += 1
+        total += 1
+        if joy_check(t, context):
+            hits += 1
+        total += 1
+        if not eleanor_check(t, state.eleanor_history[:-1]):
+            hits += 1
+        total += 1
+        if resistor_check(t, state.resistor_history):
+            hits += 1
+        total += 1
+        prior = t
+    if pathway(thoughts[-1], context):
+        hits += 1
+    total += 1
+    return hits / total
+
+
+def yield_tier(score):
+    """Map a 0.0–1.0 score to a Matthew 13:8 yield tier (100/60/30/0)."""
+    if score >= YIELD_100:
+        return 100
+    if score >= YIELD_60:
+        return 60
+    if score >= YIELD_30:
+        return 30
+    return 0
