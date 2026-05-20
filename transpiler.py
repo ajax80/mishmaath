@@ -277,12 +277,13 @@ def transpile(source):
                             current['variables'][arg1] = 'int'
                             current['declarations'].append(f'    int {safe_name(arg1)} = {raw};')
                     except ValueError:
+                        includes.add('#include <string.h>')
                         if already:
-                            includes.add('#include <string.h>')
                             current['body'].append(f'    strcpy({safe_name(arg1)}, "{raw}");')
                         else:
                             current['variables'][arg1] = 'str'
-                            current['declarations'].append(f'    char {safe_name(arg1)}[256] = "{raw}";')
+                            current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                            current['body'].append(f'    strcpy({safe_name(arg1)}, "{raw}");')
             elif arg1:
                 if arg1 not in current['variables']:
                     current['variables'][arg1] = 'str'
