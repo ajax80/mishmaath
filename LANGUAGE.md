@@ -166,6 +166,7 @@ compound conditions:
 6 n pow base exp    # n = (int)pow(base, exp)
 6 v json "key" src  # extract JSON string field
 6 v json_num "k" s  # extract JSON numeric field
+6 v arr i           # v = arr[i]  (1D int or float array read)
 6 v board row col   # v = board[row][col]  (2D array read)
 6 key kbhit         # non-blocking keypress (0 if none)
 6 f sqrt x          # f = sqrt(x)  (float)
@@ -665,6 +666,7 @@ float requires `#link m` at the top of the file (links libm):
 arrays are declared with `[]`:
 - `3 arr[] 10` → int[10]
 - `3 arr[] "5"` → char[5][256]
+- `3 arr[] 10.0` → double[10]  (`.` in size = float array)
 
 2D arrays are declared with two dimensions:
 - `3 grid 10 20` → int[20][10]

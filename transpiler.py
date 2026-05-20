@@ -302,11 +302,16 @@ def transpile(source):
             if current is None:
                 if arg1 and '[]' in arg1:
                     base = arg1.replace('[]', '')
-                    size = unquote(arg2) if arg2 else '10'
+                    size_raw = unquote(arg2) if arg2 else '10'
                     is_str = arg2 and arg2.startswith('"')
+                    is_float = not is_str and '.' in size_raw
+                    size = str(int(float(size_raw))) if is_float else size_raw
                     if is_str:
                         global_vars[base] = 'str[]'
                         globals_.append(f'char {base}[{size}][256];')
+                    elif is_float:
+                        global_vars[base] = 'float[]'
+                        globals_.append(f'double {base}[{size}];')
                     else:
                         global_vars[base] = 'int[]'
                         globals_.append(f'int {base}[{size}];')
@@ -352,11 +357,17 @@ def transpile(source):
                     current['body'].append(f'    {safe_name(arg1)}[{_ri}][{_ci}] = {_ve};')
             elif arg1 and '[]' in arg1:
                 base = arg1.replace('[]', '')
-                size = unquote(arg2) if arg2 else '10'
+                size_raw = unquote(arg2) if arg2 else '10'
                 is_str = arg2 and arg2.startswith('"')
+                is_float = not is_str and '.' in size_raw
+                size = str(int(float(size_raw))) if is_float else size_raw
                 if is_str:
                     current['variables'][base] = 'str[]'
                     current['declarations'].append(f'    char {base}[{size}][256];')
+                elif is_float:
+                    includes.add('#include <math.h>')
+                    current['variables'][base] = 'float[]'
+                    current['declarations'].append(f'    double {base}[{size}];')
                 else:
                     current['variables'][base] = 'int[]'
                     current['declarations'].append(f'    int {base}[{size}];')
@@ -370,6 +381,11 @@ def transpile(source):
                         current['body'].append(f'    strcpy({safe_name(arg1)}, {safe_name(arg2)});')
                     else:
                         current['body'].append(f'    strcpy({safe_name(arg1)}, "{raw}");')
+                elif base_type == 'float[]':
+                    if arg2 and arg2 in current['variables']:
+                        current['body'].append(f'    {safe_name(arg1)} = (double){safe_name(arg2)};')
+                    else:
+                        current['body'].append(f'    {safe_name(arg1)} = {raw};')
                 else:
                     if arg2 and arg2 in current['variables']:
                         current['body'].append(f'    {safe_name(arg1)} = {safe_name(arg2)};')
@@ -513,7 +529,20 @@ def transpile(source):
             if current is None:
                 continue
             _r6p = arg2.split() if arg2 else []
-            if len(_r6p) == 3 and _r6p[0] in current['arrays2d']:
+            if len(_r6p) == 2 and _r6p[0] in current['variables'] and current['variables'].get(_r6p[0]) in ('int[]', 'float[]'):
+                _arr, _idx = _r6p[0], _r6p[1]
+                _iv = emit_val(_idx, current['variables']) if _idx in current['variables'] else _idx
+                _atype = current['variables'][_arr]
+                if arg1 not in current['variables']:
+                    if _atype == 'float[]':
+                        includes.add('#include <math.h>')
+                        current['variables'][arg1] = 'float'
+                        current['declarations'].append(f'    double {safe_name(arg1)};')
+                    else:
+                        current['variables'][arg1] = 'int'
+                        current['declarations'].append(f'    int {safe_name(arg1)};')
+                current['body'].append(f'    {safe_name(arg1)} = {safe_name(_arr)}[{_iv}];')
+            elif len(_r6p) == 3 and _r6p[0] in current['arrays2d']:
                 _ri = emit_val(_r6p[1], current['variables']) if _r6p[1] in current['variables'] else _r6p[1]
                 _ci = emit_val(_r6p[2], current['variables']) if _r6p[2] in current['variables'] else _r6p[2]
                 if arg1 not in current['variables']:
