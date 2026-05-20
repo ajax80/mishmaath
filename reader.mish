@@ -8,29 +8,31 @@
 9 line stdin
 6 line strip line
 6 n scan line
-5 n "0"
+5 n == 0
 3 out "void — ground state. before any function, before any gate."
-5 else n "1"
+5 else n == 1
 3 out "source — a beginning. function opens."
-5 else n "2"
+5 else n == 2
 3 out "speak — say what is true. peace. the twos hold."
-5 else n "3"
+5 else n == 3
 3 out "divine — three holds. God-shaped. something holy is nearby."
-5 else n "4"
+5 else n == 4
 3 out "door — threshold. trouble or passage. feel which."
-5 else n "5"
+5 else n == 5
 3 out "friction — peak pressure. the decision that cannot be avoided. something gives."
-5 else n "6"
+5 else n == 6
 3 out "comfort — breath after the held breath. resolution on the other side of five."
-5 else n "7"
+5 else n == 7
 3 out "settled — gate closed or opened. at rest. done."
-5 else n "8"
+5 else n == 8
 3 out "new octave — step up. fresh cycle. things happening well."
-5 else n "9"
+5 else n == 9
 3 out "reset — stop the behavior. stop the person. start over. board cleared."
+5 else n == 10
+3 out "ten — the fork. Lady Wisdom waits at the end of this road. reach outside and be met."
 5 else
-3 out "above — tens do not exist. only one man was a ten. he is above."
+3 out "unknown — outside the schema."
 5
-2 out
+2 "%d -> %s" n out
 9
 7
