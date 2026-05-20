@@ -46,6 +46,37 @@ _JSON_HELPER = (
     '}'
 )
 
+_STRING_HELPER = (
+    'static void _mish_str_replace(char *dst,const char *src,const char *old,const char *rep,int sz){\n'
+    '    dst[0]=0; const char *p=src; int ol=strlen(old);\n'
+    '    if(!ol){strncpy(dst,src,sz-1);dst[sz-1]=0;return;}\n'
+    '    while(*p){\n'
+    '        const char *f=strstr(p,old);\n'
+    '        if(!f){strncat(dst,p,sz-strlen(dst)-1);break;}\n'
+    '        int b=(int)(f-p); if(b>sz-(int)strlen(dst)-1)b=sz-(int)strlen(dst)-1;\n'
+    '        strncat(dst,p,b); strncat(dst,rep,sz-strlen(dst)-1); p=f+ol;\n'
+    '    }\n'
+    '}\n'
+    'static void _mish_str_split(char *dst,const char *src,const char *delim,int sz){\n'
+    '    const char *f=strstr(src,delim);\n'
+    '    if(!f){strncpy(dst,src,sz-1);dst[sz-1]=0;return;}\n'
+    '    int n=(int)(f-src); if(n>=sz)n=sz-1;\n'
+    '    strncpy(dst,src,n); dst[n]=0;\n'
+    '}\n'
+    'static void _mish_str_split_rest(char *dst,const char *src,const char *delim,int sz){\n'
+    '    const char *f=strstr(src,delim);\n'
+    '    if(!f){dst[0]=0;return;}\n'
+    '    strncpy(dst,f+strlen(delim),sz-1); dst[sz-1]=0;\n'
+    '}\n'
+    'static void _mish_str_join(char *dst,char src[][256],int n,const char *sep,int sz){\n'
+    '    dst[0]=0;\n'
+    '    for(int _ji=0;_ji<n;_ji++){\n'
+    '        if(_ji>0)strncat(dst,sep,sz-strlen(dst)-1);\n'
+    '        strncat(dst,src[_ji],sz-strlen(dst)-1);\n'
+    '    }\n'
+    '}'
+)
+
 _WS_HELPER = (
     'static const char _mish_b64c[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";\n'
     'static void _mish_b64e(const unsigned char *in,int len,char *out){\n'
@@ -618,6 +649,89 @@ def transpile(source):
                     '    { strcpy(' + d + ',' + s + '); char *_bp=strchr(' + d + ',\'.\');'
                     ' if(_bp){ *_bp=\'[\'; strcat(' + d + ',"]\"); } }'
                 )
+            elif arg2 and arg2.startswith('contains '):
+                includes.add('#include <string.h>')
+                _cp = arg2[9:].strip().split(None, 1)
+                _csrc = _cp[0]
+                _cneedle_raw = _cp[1].strip() if len(_cp) > 1 else '""'
+                _csv = emit_val(_csrc, current['variables']) if _csrc in current['variables'] else safe_name(_csrc)
+                _cnv = (f'"{unquote(_cneedle_raw)}"' if _cneedle_raw.startswith('"')
+                        else (emit_val(_cneedle_raw, current['variables']) if _cneedle_raw in current['variables'] else safe_name(_cneedle_raw)))
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                current['body'].append(f'    {safe_name(arg1)} = (strstr({_csv},{_cnv})!=NULL)?1:0;')
+            elif arg2 and arg2.startswith('replace '):
+                helpers.add('str')
+                includes.add('#include <string.h>')
+                _rp = arg2[8:].strip().split(None, 2)
+                _rsrc = _rp[0] if _rp else arg1
+                _rold_raw = _rp[1] if len(_rp) > 1 else '""'
+                _rnew_raw = _rp[2] if len(_rp) > 2 else '""'
+                _rsv = emit_val(_rsrc, current['variables']) if _rsrc in current['variables'] else safe_name(_rsrc)
+                _rov = f'"{unquote(_rold_raw)}"' if _rold_raw.startswith('"') else (emit_val(_rold_raw, current['variables']) if _rold_raw in current['variables'] else safe_name(_rold_raw))
+                _rnv = f'"{unquote(_rnew_raw)}"' if _rnew_raw.startswith('"') else (emit_val(_rnew_raw, current['variables']) if _rnew_raw in current['variables'] else safe_name(_rnew_raw))
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                current['body'].append(f'    _mish_str_replace({safe_name(arg1)},{_rsv},{_rov},{_rnv},sizeof({safe_name(arg1)}));')
+            elif arg2 and arg2.startswith('split_rest '):
+                helpers.add('str')
+                includes.add('#include <string.h>')
+                _spp = arg2[11:].strip().split(None, 1)
+                _spsrc = _spp[0]
+                _spdelim_raw = _spp[1].strip() if len(_spp) > 1 else '","'
+                _spsv = emit_val(_spsrc, current['variables']) if _spsrc in current['variables'] else safe_name(_spsrc)
+                _spdv = f'"{unquote(_spdelim_raw)}"' if _spdelim_raw.startswith('"') else (emit_val(_spdelim_raw, current['variables']) if _spdelim_raw in current['variables'] else safe_name(_spdelim_raw))
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[1024];')
+                current['body'].append(f'    _mish_str_split_rest({safe_name(arg1)},{_spsv},{_spdv},sizeof({safe_name(arg1)}));')
+            elif arg2 and arg2.startswith('split '):
+                helpers.add('str')
+                includes.add('#include <string.h>')
+                _spp = arg2[6:].strip().split(None, 1)
+                _spsrc = _spp[0]
+                _spdelim_raw = _spp[1].strip() if len(_spp) > 1 else '","'
+                _spsv = emit_val(_spsrc, current['variables']) if _spsrc in current['variables'] else safe_name(_spsrc)
+                _spdv = f'"{unquote(_spdelim_raw)}"' if _spdelim_raw.startswith('"') else (emit_val(_spdelim_raw, current['variables']) if _spdelim_raw in current['variables'] else safe_name(_spdelim_raw))
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[1024];')
+                current['body'].append(f'    _mish_str_split({safe_name(arg1)},{_spsv},{_spdv},sizeof({safe_name(arg1)}));')
+            elif arg2 and arg2.startswith('upper '):
+                includes.add('#include <string.h>')
+                includes.add('#include <ctype.h>')
+                src = arg2[6:].strip()
+                sv = emit_val(src, current['variables']) if src in current['variables'] else safe_name(src)
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                d = safe_name(arg1)
+                current['body'].append(f'    {{ strcpy({d},{sv}); for(int _ui=0;{d}[_ui];_ui++){d}[_ui]=toupper((unsigned char){d}[_ui]); }}')
+            elif arg2 and arg2.startswith('lower '):
+                includes.add('#include <string.h>')
+                includes.add('#include <ctype.h>')
+                src = arg2[6:].strip()
+                sv = emit_val(src, current['variables']) if src in current['variables'] else safe_name(src)
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[256];')
+                d = safe_name(arg1)
+                current['body'].append(f'    {{ strcpy({d},{sv}); for(int _li=0;{d}[_li];_li++){d}[_li]=tolower((unsigned char){d}[_li]); }}')
+            elif arg2 and arg2.startswith('join '):
+                helpers.add('str')
+                includes.add('#include <string.h>')
+                _jp = arg2[5:].strip().split(None, 2)
+                _jarr = _jp[0].rstrip('[]') if _jp else ''
+                _jn_raw = _jp[1] if len(_jp) > 1 else '0'
+                _jsep_raw = _jp[2].strip() if len(_jp) > 2 else '","'
+                _jnv = emit_val(_jn_raw, current['variables']) if _jn_raw in current['variables'] else _jn_raw
+                _jsv = f'"{unquote(_jsep_raw)}"' if _jsep_raw.startswith('"') else (emit_val(_jsep_raw, current['variables']) if _jsep_raw in current['variables'] else safe_name(_jsep_raw))
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'str'
+                    current['declarations'].append(f'    char {safe_name(arg1)}[65536];')
+                current['body'].append(f'    _mish_str_join({safe_name(arg1)},{safe_name(_jarr)},{_jnv},{_jsv},sizeof({safe_name(arg1)}));')
             elif arg2 and arg2.startswith('match '):
                 includes.add('#include <regex.h>')
                 _mp = arg2[6:].strip().split(None, 1)
@@ -1419,6 +1533,9 @@ def transpile(source):
     for inc in sorted(includes):
         c.append(inc)
 
+    if 'str' in helpers:
+        c.append('')
+        c.append(_STRING_HELPER)
     if 'json' in helpers:
         c.append('')
         c.append(_JSON_HELPER)

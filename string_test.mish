@@ -1,0 +1,33 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+3 s "Hello, World"
+3 found 0
+6 found contains s "World"
+2 "contains 'World': %d" found
+6 found contains s "xyz"
+2 "contains 'xyz': %d" found
+3 out
+6 out replace s "World" "mishmaath"
+2 "replace: %s" out
+3 word
+3 rest
+6 word split s ","
+6 rest split_rest s ","
+2 "split word: [%s]" word
+2 "split rest: [%s]" rest
+3 u
+3 l
+6 u upper s
+6 l lower s
+2 "upper: %s" u
+2 "lower: %s" l
+3 arr[] "4"
+3 arr.0 "one"
+3 arr.1 "two"
+3 arr.2 "three"
+3 joined
+6 joined join arr[] 3 "-"
+2 "join: %s" joined
+7

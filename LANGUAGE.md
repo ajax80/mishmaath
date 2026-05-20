@@ -182,6 +182,14 @@ compound conditions:
 6 val db col N      # read column N from active sqlite3 query loop
 6 m match "pat" s   # m = 1 if s matches regex pattern, 0 if not
 6 c match_get "pat" s N  # c = capture group N from regex match (or "" if no match)
+6 n contains s "needle"  # n = 1 if s contains needle, 0 otherwise
+6 n contains s var        # needle can be a variable
+6 out replace src "old" "new"  # replace all occurrences of "old" with "new"
+6 w split s ","           # first field of s split by delimiter
+6 r split_rest s ","      # everything after first delimiter
+6 s upper s               # uppercase
+6 s lower s               # lowercase
+6 s join arr[] n ","      # join first n elements of string array with delimiter
 ```
 
 ---

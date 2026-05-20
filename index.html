@@ -173,7 +173,7 @@
     <tr><td>3</td><td>let</td><td>declare or assign — int, float, string, array, 2D array</td></tr>
     <tr><td>4</td><td>channel</td><td>open I/O channel or call a function</td></tr>
     <tr><td>5</td><td>if</td><td>conditional — if / else if / else / end, compound and/or/not</td></tr>
-    <tr><td>6</td><td>compute</td><td>transform — strlen, strip, json, atoi, fmt, sqrt, sin, cos, ftoa, sqlite col, regex match...</td></tr>
+    <tr><td>6</td><td>compute</td><td>transform — strlen, strip, split, replace, upper, lower, join, json, atoi, fmt, sqrt, regex match...</td></tr>
     <tr><td>7</td><td>return</td><td>end function, optionally return a value</td></tr>
     <tr><td>8</td><td>mutate</td><td>in-place arithmetic or string append — += -= *= ++ strcat</td></tr>
     <tr><td>9</td><td>loop</td><td>for / while / decrement / step / stdin / file / sqlite query / websocket recv — bare 9 closes</td></tr>
@@ -341,6 +341,25 @@
   <span class="op">2</span> <span class="var">msg</span>
 <span class="op">9</span>
 <span class="op">10</span> <span class="var">ws</span> close
+<span class="op">7</span></pre>
+    </div>
+
+    <div class="ex-card">
+      <div class="ex-label">string ops</div>
+      <pre><span class="cmt">#!/usr/bin/env mishmaath</span>
+<span class="op">0</span>
+<span class="op">1</span> <span class="var">main</span>
+<span class="op">4</span> stdout
+<span class="op">3</span> <span class="var">s</span> <span class="str">"Hello, World"</span>
+<span class="op">3</span> <span class="var">found</span> 0
+<span class="op">6</span> <span class="var">found</span> contains <span class="var">s</span> <span class="str">"World"</span>
+<span class="op">3</span> <span class="var">out</span>
+<span class="op">6</span> <span class="var">out</span> replace <span class="var">s</span> <span class="str">"World"</span> <span class="str">"mishmaath"</span>
+<span class="op">3</span> <span class="var">word</span>
+<span class="op">6</span> <span class="var">word</span> split <span class="var">s</span> <span class="str">","</span>
+<span class="op">3</span> <span class="var">u</span>
+<span class="op">6</span> <span class="var">u</span> upper <span class="var">s</span>
+<span class="op">2</span> <span class="str">"found=%d replace=%s split=%s upper=%s"</span> <span class="var">found</span> <span class="var">out</span> <span class="var">word</span> <span class="var">u</span>
 <span class="op">7</span></pre>
     </div>
 
