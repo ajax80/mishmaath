@@ -179,6 +179,8 @@ compound conditions:
 6 n ftoi f          # n = (int)f
 6 f itof n          # f = (double)n
 6 val db col N      # read column N from active sqlite3 query loop
+6 m match "pat" s   # m = 1 if s matches regex pattern, 0 if not
+6 c match_get "pat" s N  # c = capture group N from regex match (or "" if no match)
 ```
 
 ---
@@ -219,6 +221,7 @@ compound conditions:
 9 x < limit           # while (x < limit)
 9 client accept srv        # while ((client = accept(srv)) >= 0)
 9 row db query "SELECT..." # sqlite3 query loop — row = tab-joined columns
+9 msg ws recv              # loop while WebSocket frames arrive
 9 break                    # break
 9 continue                 # continue
 9                          # end loop
@@ -272,6 +275,26 @@ query loop — use op 9 to iterate rows, op 6 to read columns:
 ```
 
 requires `#link sqlite3` at the top of the file. install: `sudo dnf install sqlite-devel` (Fedora) or `sudo apt install libsqlite3-dev` (Debian/Ubuntu).
+
+**websocket client**
+```
+10 ws open "ws://host:port/path"  # connect to WebSocket server
+10 ws send "message"              # send text frame
+10 ws send msg                    # send variable as text frame
+10 ws recv buf                    # single receive into buf
+10 ws close                       # close connection
+```
+
+receive loop — loops until server closes the connection:
+```
+10 ws open "ws://localhost:8080/chat"
+9 msg ws recv
+  2 msg
+9
+10 ws close
+```
+
+no extra dependencies. the handshake and frame codec are compiled in. supports `ws://` and `wss://` URLs (TLS not terminated natively — route wss through a proxy).
 
 ---
 
@@ -440,6 +463,40 @@ requires `#link sqlite3` at the top of the file. install: `sudo dnf install sqli
   2 "[%s] %s" id msg
 9
 10 db close
+7
+```
+
+### WebSocket client
+
+```
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+10 ws open "ws://echo.websocket.org/"
+10 ws send "hello from mishmaath"
+9 msg ws recv
+  2 msg
+9
+10 ws close
+7
+```
+
+### regex
+
+```
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+3 s "order #4821 placed"
+6 m match "[0-9]+" s
+5 m == 1
+  6 id match_get "[0-9]+" s 0
+  2 "order id: %s" id
+5 else
+  2 "no number found"
+5
 7
 ```
 
