@@ -1,8 +1,12 @@
 # mishmaath — language reference
 
+**also known as BodyGuard** — H4928 — the language that guards the body of the program.
+
 mishmaath is a minimal programming language with 11 opcodes. Programs are plain text files, one instruction per line. The first token on each line is the opcode (0–10). Everything after it is the operand.
 
 mishmaath compiles to C via gcc. No runtime. No VM. The output is a native binary.
+
+© 2026 Jonathan Eugene Ayers. All rights reserved.
 
 ---
 
@@ -97,11 +101,14 @@ prefix params with `#` for int, `&` for int pointer, plain name for string.
 
 ```
 3 x 5               # int x = 5
+3 x 3.14            # double x = 3.14  (float)
 3 name "alice"      # char name[256] = "alice"
 3 x                 # declare string x (empty)
 3 arr[] 10          # int arr[10]
+3 arr[] 10.0        # double arr[10]  (float array — dot in size)
 3 arr[] "5"         # char arr[5][256]  (string array)
 3 arr.i 99          # arr[i] = 99
+3 arr.i 3.14        # arr[i] = 3.14  (float array element)
 3 grid 10 20        # int grid[20][10]  (2D array, cols x rows)
 3 grid row col 1    # grid[row][col] = 1
 ```
