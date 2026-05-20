@@ -78,6 +78,7 @@ _STRING_HELPER = (
 )
 
 _HAL_STUB_HELPER = (
+    '#include <string.h>\n'
     '#ifndef MISH_HAL_REAL\n'
     'static int mish_adc_read(int pin){\n'
     '    printf("[ADC] pin %d -> 512 (stub)\\n",pin);\n'
@@ -99,6 +100,18 @@ _HAL_STUB_HELPER = (
     'static void mish_uart_recv(char *buf,int sz){\n'
     '    strncpy(buf,"stub_uart_data",sz-1); buf[sz-1]=0;\n'
     '    printf("[UART] rx: %s (stub)\\n",buf);\n'
+    '}\n'
+    'static int mish_i2c_read(int addr,int reg){\n'
+    '    printf("[I2C] read  addr=0x%02x reg=0x%02x -> 0x68 (stub)\\n",addr,reg);\n'
+    '    return (reg==0x75)?0x68:0;\n'
+    '}\n'
+    'static int mish_i2c_read16(int addr,int reg){\n'
+    '    int val=(reg>=0x3f&&reg<=0x40)?16384:0;\n'
+    '    printf("[I2C] read16 addr=0x%02x reg=0x%02x -> %d (stub)\\n",addr,reg,val);\n'
+    '    return val;\n'
+    '}\n'
+    'static void mish_i2c_write(int addr,int reg,int val){\n'
+    '    printf("[I2C] write addr=0x%02x reg=0x%02x val=0x%02x (stub)\\n",addr,reg,val);\n'
     '}\n'
     '#endif'
 )
@@ -1427,7 +1440,7 @@ def transpile(source):
                 cv = emit_val(client_raw, current['variables']) if client_raw in current['variables'] else safe_name(client_raw)
                 d = safe_name(arg1)
                 current['body'].append(f'    {{ ssize_t _rn=read({cv},{d},sizeof({d})-1); {d}[_rn>0?_rn:0]=0; }}')
-            elif arg1 and arg2 and arg2.startswith('write '):
+            elif arg1 and arg1 != 'i2c' and arg2 and arg2.startswith('write '):
                 resp_raw = arg2[6:].strip()
                 includes.add('#include <unistd.h>')
                 includes.add('#include <string.h>')
@@ -1650,6 +1663,41 @@ def transpile(source):
                     current['variables'][arg1] = 'str'
                     current['declarations'].append(f'    char {safe_name(arg1)}[256];')
                 current['body'].append(f'    mish_uart_recv({safe_name(arg1)},sizeof({safe_name(arg1)}));')
+            elif arg1 and arg2 and arg2.startswith('i2c read16 '):
+                _i2cp = arg2[11:].strip().split()
+                addr_raw = _i2cp[0] if _i2cp else '0'
+                reg_raw  = _i2cp[1] if len(_i2cp) > 1 else '0'
+                helpers.add('hal')
+                includes.add('#include <stdio.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                addr_expr = emit_val(addr_raw, current['variables']) if addr_raw in current['variables'] else addr_raw
+                reg_expr  = emit_val(reg_raw,  current['variables']) if reg_raw  in current['variables'] else reg_raw
+                current['body'].append(f'    {safe_name(arg1)} = mish_i2c_read16({addr_expr},{reg_expr});')
+            elif arg1 and arg2 and arg2.startswith('i2c read '):
+                _i2cp = arg2[9:].strip().split()
+                addr_raw = _i2cp[0] if _i2cp else '0'
+                reg_raw  = _i2cp[1] if len(_i2cp) > 1 else '0'
+                helpers.add('hal')
+                includes.add('#include <stdio.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                addr_expr = emit_val(addr_raw, current['variables']) if addr_raw in current['variables'] else addr_raw
+                reg_expr  = emit_val(reg_raw,  current['variables']) if reg_raw  in current['variables'] else reg_raw
+                current['body'].append(f'    {safe_name(arg1)} = mish_i2c_read({addr_expr},{reg_expr});')
+            elif arg1 == 'i2c' and arg2 and arg2.startswith('write '):
+                _i2cw = arg2[6:].strip().split()
+                addr_raw = _i2cw[0] if _i2cw else '0'
+                reg_raw  = _i2cw[1] if len(_i2cw) > 1 else '0'
+                val_raw  = _i2cw[2] if len(_i2cw) > 2 else '0'
+                helpers.add('hal')
+                includes.add('#include <stdio.h>')
+                addr_expr = emit_val(addr_raw, current['variables']) if addr_raw in current['variables'] else addr_raw
+                reg_expr  = emit_val(reg_raw,  current['variables']) if reg_raw  in current['variables'] else reg_raw
+                val_expr  = emit_val(val_raw,  current['variables']) if val_raw  in current['variables'] else val_raw
+                current['body'].append(f'    mish_i2c_write({addr_expr},{reg_expr},{val_expr});')
             elif arg1 and arg2 and arg2.startswith('shell_all '):
                 cmd_raw = arg2[10:].strip()
                 includes.add('#include <stdio.h>')

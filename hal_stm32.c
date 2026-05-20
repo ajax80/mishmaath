@@ -52,6 +52,27 @@ void mish_uart_send(const char *msg) {
     HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
 }
 
+/* I2C — assumes hi2c1, addr is 7-bit (STM32 HAL left-shifts internally) */
+int mish_i2c_read(int addr, int reg) {
+    uint8_t buf = 0;
+    HAL_I2C_Mem_Read(&hi2c1, (uint16_t)(addr << 1), (uint16_t)reg,
+                     I2C_MEMADD_SIZE_8BIT, &buf, 1, HAL_MAX_DELAY);
+    return (int)buf;
+}
+
+int mish_i2c_read16(int addr, int reg) {
+    uint8_t buf[2] = {0};
+    HAL_I2C_Mem_Read(&hi2c1, (uint16_t)(addr << 1), (uint16_t)reg,
+                     I2C_MEMADD_SIZE_8BIT, buf, 2, HAL_MAX_DELAY);
+    return (int)(int16_t)((buf[0] << 8) | buf[1]);
+}
+
+void mish_i2c_write(int addr, int reg, int val) {
+    uint8_t buf = (uint8_t)val;
+    HAL_I2C_Mem_Write(&hi2c1, (uint16_t)(addr << 1), (uint16_t)reg,
+                      I2C_MEMADD_SIZE_8BIT, &buf, 1, HAL_MAX_DELAY);
+}
+
 void mish_uart_recv(char *buf, int sz) {
     /* read until newline or buffer full */
     int i = 0;

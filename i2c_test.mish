@@ -1,0 +1,40 @@
+#!/usr/bin/env mishmaath
+0
+1 main
+4 stdout
+
+2 "-- wake MPU6050 --"
+10 i2c write 0x68 0x6b 0
+
+2 "-- WHO_AM_I (expect 0x68 = 104) --"
+3 who 0
+10 who i2c read 0x68 0x75
+2 "WHO_AM_I = %d" who
+
+2 "-- accelerometer --"
+3 ax 0
+3 ay 0
+3 az 0
+10 ax i2c read16 0x68 0x3b
+10 ay i2c read16 0x68 0x3d
+10 az i2c read16 0x68 0x3f
+2 "accel x=%d y=%d z=%d" ax ay az
+
+2 "-- gyroscope --"
+3 gx 0
+3 gy 0
+3 gz 0
+10 gx i2c read16 0x68 0x43
+10 gy i2c read16 0x68 0x45
+10 gz i2c read16 0x68 0x47
+2 "gyro  x=%d y=%d z=%d" gx gy gz
+
+2 "-- gait loop (5 ticks) --"
+3 i 0
+9 i 0 5
+  10 az i2c read16 0x68 0x3f
+  10 gz i2c read16 0x68 0x47
+  2 "tick %d  az=%d  gz=%d" i az gz
+  10 sleep 16
+9
+7
