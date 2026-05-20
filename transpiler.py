@@ -22,6 +22,22 @@ _JSON_HELPER = (
     '}'
 )
 
+_TERM_HELPER = (
+    'static struct termios _mish_old_term;\n'
+    'static void _mish_rawmode_on(void){\n'
+    '    struct termios t; tcgetattr(STDIN_FILENO,&_mish_old_term);\n'
+    '    t=_mish_old_term; t.c_lflag&=~(ICANON|ECHO);\n'
+    '    t.c_cc[VMIN]=0; t.c_cc[VTIME]=0;\n'
+    '    tcsetattr(STDIN_FILENO,TCSANOW,&t);\n'
+    '}\n'
+    'static void _mish_rawmode_off(void){\n'
+    '    tcsetattr(STDIN_FILENO,TCSANOW,&_mish_old_term);\n'
+    '}\n'
+    'static int _mish_kbhit(void){\n'
+    '    int c=getchar(); return (c==EOF)?0:c;\n'
+    '}'
+)
+
 _HTTP_HELPER = (
     'static void _mish_http_method(const char *r,char *o,int sz){'
     'int i=0;while(*r&&*r!=32&&i<sz-1)o[i++]=*r++;o[i]=0;}\n'
@@ -567,6 +583,15 @@ def transpile(source):
                 av = emit_val(a, current['variables']) if a in current['variables'] else a
                 bv = emit_val(b, current['variables']) if b in current['variables'] else b
                 current['body'].append(f'    {safe_name(arg1)} = (int)pow((double){av}, (double){bv});')
+            elif arg2 == 'kbhit':
+                helpers.add('term')
+                includes.add('#include <termios.h>')
+                includes.add('#include <unistd.h>')
+                includes.add('#include <stdio.h>')
+                if arg1 not in current['variables']:
+                    current['variables'][arg1] = 'int'
+                    current['declarations'].append(f'    int {safe_name(arg1)};')
+                current['body'].append(f'    {safe_name(arg1)} = _mish_kbhit();')
             elif arg1 and arg1 in current['variables']:
                 includes.add('#include <stdio.h>')
                 if current['variables'][arg1] == 'int':
@@ -730,10 +755,17 @@ def transpile(source):
                     except ValueError:
                         pass
                 if not is_for:
-                    val = unquote(arg2)
+                    w_op = '<'
+                    w_rest = arg2
+                    for cop in ('!=', '>=', '<=', '>', '<', '=='):
+                        if arg2.startswith(cop):
+                            w_op = cop
+                            w_rest = arg2[len(cop):].strip()
+                            break
+                    val = unquote(w_rest)
                     if arg1 in current['variables'] and current['variables'][arg1] == 'int':
                         current['loop_stack'].append('while')
-                        current['body'].append(f'    while ({safe_name(arg1)} < {val}) {{')
+                        current['body'].append(f'    while ({safe_name(arg1)} {w_op} {val}) {{')
                     else:
                         includes.add('#include <string.h>')
                         current['loop_stack'].append('while')
@@ -783,7 +815,24 @@ def transpile(source):
         elif op == 10:
             if current is None:
                 continue
-            if arg1 and arg2 and arg2.startswith('listen '):
+            if arg1 == 'sleep':
+                includes.add('#include <unistd.h>')
+                ms = emit_val(arg2, current['variables']) if arg2 in current['variables'] else arg2
+                current['body'].append(f'    usleep({ms} * 1000);')
+            elif arg1 == 'rawmode' and arg2 == 'on':
+                helpers.add('term')
+                includes.add('#include <termios.h>')
+                includes.add('#include <unistd.h>')
+                current['body'].append('    _mish_rawmode_on();')
+            elif arg1 == 'rawmode' and arg2 == 'off':
+                helpers.add('term')
+                includes.add('#include <termios.h>')
+                includes.add('#include <unistd.h>')
+                current['body'].append('    _mish_rawmode_off();')
+            elif arg1 == 'clear':
+                includes.add('#include <stdio.h>')
+                current['body'].append('    printf("\\033[H\\033[2J"); fflush(stdout);')
+            elif arg1 and arg2 and arg2.startswith('listen '):
                 port_raw = arg2[7:].strip()
                 includes.add('#include <sys/socket.h>')
                 includes.add('#include <netinet/in.h>')
@@ -934,6 +983,9 @@ def transpile(source):
     if 'http' in helpers:
         c.append('')
         c.append(_HTTP_HELPER)
+    if 'term' in helpers:
+        c.append('')
+        c.append(_TERM_HELPER)
 
     if globals_:
         c.append('')
