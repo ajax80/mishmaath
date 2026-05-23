@@ -1,0 +1,16 @@
+#!/usr/bin/env mishmaath
+0
+1 handle_fall
+4 stdout
+2 "fall detected on pin 5"
+7
+
+1 main
+4 stdout
+2 "-- registering interrupt on pin 5 --"
+10 on_interrupt 5 handle_fall
+2 "-- reading IMU while waiting --"
+3 az 0
+10 az i2c read16 0x68 0x3f
+2 "az = %d" az
+7

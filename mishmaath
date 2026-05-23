@@ -8,9 +8,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from transpiler import transpile
 
 def usage():
-    print("usage: mishmaath <file.mish> [-c] [-o output]")
-    print("  -c        compile to binary via gcc")
-    print("  -o name   output name (default: stdout for C, a.out for binary)")
+    print("usage: mishmaath <file.mish> [-c] [-o output] [--target=stm32]")
+    print("  -c              compile to binary via gcc")
+    print("  -o name         output name (default: stdout for C, a.out for binary)")
+    print("  --target=stm32  output C ready for arm-none-eabi-gcc + MISH_HAL_REAL")
     sys.exit(1)
 
 args = sys.argv[1:]
@@ -20,11 +21,14 @@ if not args:
 src_file = None
 compile_flag = False
 out_name = None
+target_stm32 = False
 
 i = 0
 while i < len(args):
     if args[i] == '-c':
         compile_flag = True
+    elif args[i] == '--target=stm32':
+        target_stm32 = True
     elif args[i] == '-o':
         i += 1
         if i >= len(args):
@@ -55,7 +59,23 @@ _extra_flags = []
 for _m in _link_extra:
     _extra_flags.extend(_m.split())
 
-if has_shebang and not compile_flag and not out_name:
+if target_stm32:
+    base = os.path.splitext(os.path.basename(src_file))[0]
+    out_c = out_name or f'{base}_mish.c'
+    stm32_header = (
+        '/* mishmaath / BodyGuard — STM32 target\n'
+        ' * compile: arm-none-eabi-gcc -DMISH_HAL_REAL -mcpu=cortex-m4 -mthumb\n'
+        ' *          -mfpu=fpv4-sp-d16 -mfloat-abi=hard -Os\n'
+        ' *          hal_stm32.c ' + out_c + ' [your STM32 HAL objects] -o out.elf\n'
+        ' * drop this file and hal_stm32.c into your STM32CubeIDE project.\n'
+        ' */\n'
+        '#define MISH_HAL_REAL\n'
+    )
+    with open(out_c, 'w') as f:
+        f.write(stm32_header + c_code)
+    print(f"mishmaath: STM32 target written to {out_c}")
+    print(f"  arm-none-eabi-gcc -DMISH_HAL_REAL -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -Os hal_stm32.c {out_c} [startup.o] -T [linker.ld] -o out.elf")
+elif has_shebang and not compile_flag and not out_name:
     with tempfile.NamedTemporaryFile(suffix='.c', mode='w', delete=False) as tf:
         tf.write(c_code)
         tmp_c = tf.name

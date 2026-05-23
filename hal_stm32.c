@@ -84,3 +84,26 @@ void mish_uart_recv(char *buf, int sz) {
     }
     buf[i] = 0;
 }
+
+/* interrupt — EXTI falling-edge on pin, calls registered mishmaath handler */
+#define MISH_MAX_IRQ 16
+static void (*_mish_irq_table[MISH_MAX_IRQ])(void);
+
+void mish_interrupt_register(int pin, void (*cb)(void)) {
+    if (pin < 0 || pin >= MISH_MAX_IRQ) return;
+    _mish_irq_table[pin] = cb;
+    GPIO_InitTypeDef cfg = {0};
+    cfg.Pin   = (uint16_t)(1u << pin);
+    cfg.Mode  = GPIO_MODE_IT_FALLING;
+    cfg.Pull  = GPIO_PULLUP;
+    HAL_GPIO_Init(GPIOD, &cfg);
+    IRQn_Type irqn = (IRQn_Type)(EXTI0_IRQn + pin);
+    HAL_NVIC_SetPriority(irqn, 0, 0);
+    HAL_NVIC_EnableIRQ(irqn);
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+    int pin = __builtin_ctz(GPIO_Pin);
+    if (pin < MISH_MAX_IRQ && _mish_irq_table[pin])
+        _mish_irq_table[pin]();
+}

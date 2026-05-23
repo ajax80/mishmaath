@@ -113,6 +113,9 @@ _HAL_STUB_HELPER = (
     'static void mish_i2c_write(int addr,int reg,int val){\n'
     '    printf("[I2C] write addr=0x%02x reg=0x%02x val=0x%02x (stub)\\n",addr,reg,val);\n'
     '}\n'
+    'static void mish_interrupt_register(int pin,void(*cb)(void)){\n'
+    '    printf("[IRQ] pin %d handler registered (stub)\\n",pin);\n'
+    '}\n'
     '#endif'
 )
 
@@ -1698,6 +1701,14 @@ def transpile(source):
                 reg_expr  = emit_val(reg_raw,  current['variables']) if reg_raw  in current['variables'] else reg_raw
                 val_expr  = emit_val(val_raw,  current['variables']) if val_raw  in current['variables'] else val_raw
                 current['body'].append(f'    mish_i2c_write({addr_expr},{reg_expr},{val_expr});')
+            elif arg1 == 'on_interrupt' and arg2:
+                _irp = arg2.strip().split()
+                pin_raw  = _irp[0] if _irp else '0'
+                func_raw = _irp[1] if len(_irp) > 1 else 'main'
+                helpers.add('hal')
+                includes.add('#include <stdio.h>')
+                pin_expr = emit_val(pin_raw, current['variables']) if pin_raw in current['variables'] else pin_raw
+                current['body'].append(f'    mish_interrupt_register({pin_expr}, {safe_name(func_raw)});')
             elif arg1 and arg2 and arg2.startswith('shell_all '):
                 cmd_raw = arg2[10:].strip()
                 includes.add('#include <stdio.h>')
