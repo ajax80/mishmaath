@@ -359,6 +359,37 @@ no extra dependencies — pthreads is standard on Linux. the compiler adds `-lpt
 
 ---
 
+## hardware / peripherals
+
+opcode `10` reaches the hardware abstraction layer. on x86 every op prints a `[ADC]`/`[GPIO]`/… stub line so programs run and test anywhere; on STM32F407VE (`hal_stm32.c`) the same ops drive real silicon. pin/addr/reg/duty arguments accept literals or variables.
+
+```
+10 var adc pin              # ADC read on pin -> var
+10 gpio set pin val         # GPIO write (val 0/1)
+10 var gpio get pin         # GPIO read -> var
+10 pwm set pin duty         # PWM duty 0-255 on pin
+10 uart send msg            # UART transmit (literal or variable)
+10 var uart recv            # UART receive -> var
+10 i2c write addr reg val   # I2C register write
+10 var i2c read addr reg    # I2C read byte -> var
+10 var i2c read16 addr reg  # I2C read 16-bit big-endian -> var
+10 on_interrupt pin func    # register EXTI falling-edge callback -> func
+10 sleep ms                 # sleep milliseconds
+```
+
+compile for the STM32 target with `mishmaath file.mish --target=stm32` — emits `arm-none-eabi-gcc`-ready C with `#define MISH_HAL_REAL`, to be linked against `hal_stm32.c`.
+
+example — MPU6050 over I2C (`i2c_test.mish`):
+```
+10 i2c write 0x68 0x6b 0    # wake the device
+3 who 0
+10 who i2c read 0x68 0x75   # WHO_AM_I -> 104 (0x68)
+3 az 0
+10 az i2c read16 0x68 0x3f  # accel Z
+```
+
+---
+
 ## examples
 
 ### hello world

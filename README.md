@@ -91,6 +91,7 @@ This schema has been running since age 8 — every beat, word, step, and door we
 mishmaath <file.mish>              print generated C
 mishmaath <file.mish> -c           compile via gcc → a.out
 mishmaath <file.mish> -c -o name   compile to named binary
+mishmaath <file.mish> --target=stm32  emit arm-none-eabi-ready C (MISH_HAL_REAL)
 ```
 
 Or run directly with a shebang:
@@ -311,14 +312,48 @@ Good calibration means the hero reads your felt weight before you have time to n
 6 rest skip str     extract rest of string after first token
 3 name[] size       declare int array of given size
 3 name[] "size"     declare string array of given size
+3 name[] N.0        declare float array — dot in size → double[N]
 3 name.0 val        set array element by literal index
 3 name.i val        set array element by variable index
 2 name.i            print array element
 10 var "file.txt"   append variable to file
 10 "msg" "file.txt" append literal string to file
+6 n exists "f.txt"  n = 1 if file exists, else 0 (path may be a var)
+10 delete "f.txt"   delete file (path may be a var)
+6 s fmt "%d/%d" a b sprintf into s — multiple values, any format
+6 out replace s "a" "b"  replace all "a" with "b" in s → out
+6 w split s ","     first field of s split by delimiter
+6 r split_rest s "," everything after first delimiter
+6 s upper s         uppercase / 6 s lower s  lowercase
+6 s join arr[] n "," join first n string-array elements with delimiter
+9 i 0 100 5         for (i=0; i<100; i+=5) — step form
+10 spawn func       run func() as a background thread (-lpthread auto)
+10 join func        wait for thread to finish
+10 lock name        acquire named mutex / 10 unlock name  release it
+10 out shell_all "cmd"  run shell command, capture all output
+10 out pipe "cmd" in    pipe var `in` into cmd, capture all output
+_err                global int: 0 ok, non-zero = last fallible op failed
+```
+
+**Hardware opcodes** (opcode `10`, stub HAL on x86 → real HAL on STM32F407VE):
+
+```
+10 var adc pin      ADC read on pin → var
+10 gpio set pin val GPIO write (val 0/1)
+10 var gpio get pin GPIO read → var
+10 pwm set pin duty PWM duty 0–255 on pin
+10 uart send msg    UART transmit (literal or var)
+10 var uart recv    UART receive → var
+10 i2c write addr reg val   I2C register write
+10 var i2c read addr reg    I2C read byte → var
+10 var i2c read16 addr reg  I2C read 16-bit big-endian → var
+10 on_interrupt pin func  register EXTI falling-edge callback → func
+10 sleep ms         sleep milliseconds
 ```
 
 Global variables: declare with `3` before any `1` — all functions share them.
+
+Full opcode reference (with `_err` table and examples): see [`LANGUAGE.md`](LANGUAGE.md).
 
 ---
 
@@ -435,6 +470,13 @@ The schema encodes sensory experience. A song becomes a fingerprint — each seg
 - [x] self-hosting compiler stage 0 — `compiler.mish` reads mishmaath source, outputs C
 - [x] dual-signal loss function — Eleanor and the resistor (`schema_eval.py`)
 - [x] Eli and Genesis — the children, the architecture, the motive
+- [x] expanded string ops — replace, split, upper, lower, join, fmt
+- [x] expanded file ops — exists, delete (alongside read/write)
+- [x] float arrays — `3 arr[] N.0` → double[N]
+- [x] concurrency — spawn, join, lock, unlock (pthreads)
+- [x] pipes — shell_all (full capture), pipe (stdin-to-process)
+- [x] error state — `_err` global set by all fallible ops
+- [x] hardware opcodes — ADC, GPIO, PWM, UART, I2C — stub HAL + `hal_stm32.c`
 - [ ] sensory input layer — eyes and ears
 - [ ] self-hosting stage 1 — full opcode coverage, compile itself
 
