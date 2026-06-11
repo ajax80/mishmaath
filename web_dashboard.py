@@ -169,9 +169,20 @@ state = {
 
 STABLE_MIN = 4
 
+def detect_audio_device():
+    try:
+        out = subprocess.check_output(['pactl', 'list', 'sources', 'short'],
+                                      stderr=subprocess.DEVNULL).decode()
+        sources = [l.split('\t')[1] for l in out.strip().splitlines() if '\t' in l]
+        non_monitor = [s for s in sources if not s.endswith('.monitor')]
+        return non_monitor[0] if non_monitor else (sources[0] if sources else 'default')
+    except Exception:
+        return 'default'
+
 def audio_reader():
+    device = state.get('audio_device', 'default')
     proc = subprocess.Popen(
-        ['parec', '--device=greybox.monitor', '--format=float32le',
+        ['parec', f'--device={device}', '--format=float32le',
          f'--rate={SAMPLERATE}', '--channels=1'],
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
     )
@@ -824,13 +835,16 @@ if __name__ == '__main__':
     ap.add_argument('--host',     default='0.0.0.0')
     ap.add_argument('--port',     type=int, default=8765)
     ap.add_argument('--no-audio', action='store_true', help='use test data instead of parec')
+    ap.add_argument('--device',   default=None, help='parec source name (default: auto-detect)')
     args = ap.parse_args()
 
     if args.no_audio:
         threading.Thread(target=test_data_generator, daemon=True).start()
         print(f'[mishmaath] test mode — open http://localhost:{args.port}')
     else:
+        device = args.device or detect_audio_device()
+        state['audio_device'] = device
         threading.Thread(target=audio_reader, daemon=True).start()
-        print(f'[mishmaath] live audio — open http://localhost:{args.port}')
+        print(f'[mishmaath] live audio ({device}) — open http://localhost:{args.port}')
 
     uvicorn.run(app, host=args.host, port=args.port, log_level='warning')
