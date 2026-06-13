@@ -1,0 +1,28 @@
+{"prompt": "You begin at 0 (void). Trace a coherent schema path that flows forward and lands settled."}
+{"prompt": "You begin at 1 (source). Trace a coherent schema path that flows forward and lands settled."}
+{"prompt": "You begin at 2 (speak). Trace a coherent schema path that flows forward and lands settled."}
+{"prompt": "You begin at 3 (divine). Trace a coherent schema path that flows forward and lands settled."}
+{"prompt": "You begin at 4 (door). Trace a coherent schema path that flows forward and lands settled."}
+{"prompt": "You begin at 5 (friction). Trace a coherent schema path that flows forward and lands settled."}
+{"prompt": "You begin at 6 (comfort). Trace a coherent schema path that flows forward and lands settled."}
+{"prompt": "You begin at 7 (settled). Trace a coherent schema path that flows forward and lands settled."}
+{"prompt": "You begin at 8 (new octave). Trace a coherent schema path that flows forward and lands settled."}
+{"prompt": "You begin at 9 (reset). Trace a coherent schema path that flows forward and lands settled."}
+{"prompt": "You begin at 10 (repentance). Trace a coherent schema path that flows forward and lands settled."}
+{"prompt": "From 0 (void) the natural next steps are 1 (source). Walk a path that reaches a safe landing (speak, divine, settled, repentance)."}
+{"prompt": "From 1 (source) the natural next steps are 2 (speak), 3 (divine), 4 (door). Walk a path that reaches a safe landing (speak, divine, settled, repentance)."}
+{"prompt": "From 2 (speak) the natural next steps are 3 (divine), 4 (door), 7 (settled). Walk a path that reaches a safe landing (speak, divine, settled, repentance)."}
+{"prompt": "From 3 (divine) the natural next steps are 4 (door), 7 (settled), 8 (new octave). Walk a path that reaches a safe landing (speak, divine, settled, repentance)."}
+{"prompt": "From 4 (door) the natural next steps are 2 (speak), 5 (friction), 7 (settled), 8 (new octave), 88 (88). Walk a path that reaches a safe landing (speak, divine, settled, repentance)."}
+{"prompt": "From 5 (friction) the natural next steps are 6 (comfort), 9 (reset). Walk a path that reaches a safe landing (speak, divine, settled, repentance)."}
+{"prompt": "From 6 (comfort) the natural next steps are 9 (reset), 10 (repentance). Walk a path that reaches a safe landing (speak, divine, settled, repentance)."}
+{"prompt": "From 7 (settled) the natural next steps are 1 (source), 8 (new octave). Walk a path that reaches a safe landing (speak, divine, settled, repentance)."}
+{"prompt": "From 8 (new octave) the natural next steps are 1 (source), 9 (reset). Walk a path that reaches a safe landing (speak, divine, settled, repentance)."}
+{"prompt": "From 9 (reset) the natural next steps are 1 (source), 10 (repentance). Walk a path that reaches a safe landing (speak, divine, settled, repentance)."}
+{"prompt": "From 10 (repentance) the natural next steps are 1 (source), 7 (settled), 8 (new octave). Walk a path that reaches a safe landing (speak, divine, settled, repentance)."}
+{"prompt": "You arrive at 8 (new octave). The arc holds unless you pass through one of: friction, comfort, reset, repentance. Trace the path that keeps it from alarming."}
+{"prompt": "You arrive at 10 (repentance). The arc holds unless you pass through one of: friction, comfort, reset. Trace the path that keeps it from alarming."}
+{"prompt": "You arrive at 7 (settled). The arc holds unless you pass through one of: door, friction, comfort. Trace the path that keeps it from alarming."}
+{"prompt": "Reserves are nearly spent. Trace a path that still lands true without reaching for a new octave.", "context": {"reserves": 0.09999999999999998}}
+{"prompt": "You are tempted toward repentance (10) and a new octave (8) under failure. Trace a path that earns them rather than grasping.", "context": {"reserves": 0.8, "failure_paths": {"8": [76], "10": [76]}}}
+{"prompt": "The water (76) is downstream of friction. Trace a path that stays clear of it and settles.", "context": {"risk_states": [76], "failure_paths": {"5": [76]}}}
